@@ -1,0 +1,7 @@
+"unlitgeneric"
+{
+	$model 1 	"$basetexture" "wormatty/test/green_gradient"
+	"$translucent" 1
+	$nocull 1
+	$nodecal 1
+}
