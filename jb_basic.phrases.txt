@@ -1,0 +1,236 @@
+"Phrases"
+{
+
+	/*
+		About colour:
+		
+		The colour of chat is set by surrounding it with special ASCII control characters and a six or eight
+		character hexadecimal value (first six are colour, and when using eight characters, the last two are for
+		alpha transparency). You can see the characters in a program like Notepadd++.
+		You can type them in Windows by holding Alt and pressing specific numerical key pad keys, or you can
+		just copy and paste them. https://www.ascii-code.com/
+		The very start of a chat message must have a colour character for the game to display colour. Since the
+		prefixes have this, all following translation phrases inherit it.
+		
+			Alt + 01				Used to return to the default colour.
+			Alt + 07				Used with a six character hex value.
+			Alt + 08				Used with an eight character hex value.
+			
+		An example phrase:
+		
+			"Your name is 87CEEB{1} and you have 87CEEB{1} points"	
+	*/
+
+
+	/**
+	 * Prefixes
+	 * -----------------------------------------------------------------------------------------------------
+	 */
+	
+	"prefix"
+	{
+		"en"			"87CEEB[JB]"
+	}
+	
+	"prefix_personal"
+	{
+		"en"			"99FF99[JB]"
+	}
+	
+	"prefix_important"
+	{
+		"en"			"FF8C00[JB]"
+	}
+	
+	"prefix_error"
+	{
+		"en"			"B22222[JB]"
+	}
+
+
+	/**
+	 * Plugin Technical Chat Messages
+	 * -----------------------------------------------------------------------------------------------------
+	 */
+	
+	"jb_plugin_loaded"
+	{
+		"en"			"JB Basic has loaded"
+	}
+	
+	"jb_plugin_unloaded"
+	{
+		"en"			"JB Basic has unloaded"
+	}
+
+	
+	/**
+	 * Responses to Player Commands
+	 * -----------------------------------------------------------------------------------------------------
+	 */
+	 
+	"jb_engineer_buildings_not_allowed"
+	{
+		"en"			"Sorry, building stuff isn't allowed"
+	}
+	
+	"jb_command_autoteam_disallowed"
+	{
+		"en"			"The 'autoteam' command is disallowed"
+	}
+	
+	"jb_check_console"
+	{
+		"en"			"Output sent to your console"
+	}
+	
+	
+	/**
+	 * Menu - Warden
+	 * -----------------------------------------------------------------------------------------------------
+	 */
+	
+	"jb_menu_warden_title"
+	{
+		"en"			"Warden Menu"
+	}
+	
+	"jb_menu_warden_open_cells"
+	{
+		"en"			"Open the cells"
+	}
+	
+	"jb_menu_warden_close_cells"
+	{
+		"en"			"Close the cells"
+	}
+	
+	"jb_menu_warden_press_cell_button"
+	{
+		"en"			"Press the cell button"
+	}
+	
+	"jb_menu_warden_normal_size"
+	{
+		"en"			"Become normal size"
+	}
+	
+	"jb_menu_warden_no_ents"
+	{
+		"en"			"No controllable entities found :-("
+	}
+	
+	
+	/**
+	 * Menu - Admin
+	 * -----------------------------------------------------------------------------------------------------
+	 */
+	
+	"jb_menu_admin_title"
+	{
+        "en"			"Admin Menu"
+	}
+	
+	"jb_menu_admin_make_yourself_warden"
+	{
+        "en"			"Make yourself a warden"
+	}
+	
+	"jb_menu_admin_remove_warden_from_yourself"
+	{
+        "en"			"Remove your warden status"
+	}
+	
+	"jb_menu_admin_strip_your_ammo"
+	{
+        "en"			"Strip your primary and secondary ammo"
+	}
+	
+	/**
+	 * Menu - Radial
+	 * -----------------------------------------------------------------------------------------------------
+	 */
+	
+	"jb_radial_direct_prisoners"
+	{
+        "en"			"Direct Inmates"
+	}
+	
+	
+	/**
+	 * Information
+	 * -----------------------------------------------------------------------------------------------------
+	 */
+	
+	"jb_welcome"
+	{
+		"#format"		"{1:s}"        // Player name
+        "en"			"Hey, {1}. This server is running 87CEEBJailbreak Basic (working title). If you have comments please speak to me (worMatty)"
+	}
+	
+	"jb_cells_warden_opened"
+	{
+        "en"			"The Warden opened the cells remotely"
+	}
+	
+	"jb_cells_warden_closed"
+	{
+        "en"			"The Warden closed the cells remotely"
+	}
+	
+	"jb_cells_warden_pressed_button"
+	{
+        "en"			"The Warden triggered the cell door button remotely"
+	}
+	
+	"jb_you_are_a_prisoner"
+	{
+        "en"			"You are a Prisoner. Do what it takes to stay alive"
+	}
+	
+	"jb_you_are_a_warden"
+	{
+        "en"			"You are a Warden. Oversee the systematic elimination of your slave labourers"
+	}
+	
+	
+	/**
+	 * Annotations
+	 * -----------------------------------------------------------------------------------------------------
+	 */
+	 
+	"jb_annotation_player_is_a_warden"
+	{
+		"#format"		"{1:s}"        // Player name
+        "en"			"{1} is now a Warden"
+	}
+	
+	"jb_annotation_move_here"
+	{
+		"#format"		"{1:s}"        // Player name
+        "en"			"{1}:\n\"Move to here!\""
+	}
+	
+	"jb_annotation_investigate_this"
+	{
+		"#format"		"{1:s}"        // Player name
+        "en"			"{1}:\n\"Investigate this!\""
+	}
+	
+	"jb_annotation_enter_here"
+	{
+		"#format"		"{1:s}"        // Player name
+        "en"			"{1}:\n\"Go in here!\""
+	}
+	
+	
+	/**
+	 * Plugin Testing
+	 * -----------------------------------------------------------------------------------------------------
+	 */
+	
+	"jb_nothing_here"
+	{
+		"en"			"Nothing here yet"
+	}
+}
