@@ -45,6 +45,8 @@
 #define PREFIX_SERVER		"[JB Basic]"
 
 #define STRING_YOUR_MOD		"Source Game Server"	// Default game description when using with unsupported games/mods
+#define PRE_ROUND_TIME		22
+#define ROUND_TIME			600
 
 
 
@@ -57,9 +59,9 @@
 // Player Queue Points
 enum {
 	Points_Starting = 10,		// Queue points a player receives when connecting for the first time
-	Points_FullAward = 10,		// Queue ponts awarded on round end
+	Points_FullAward = 10,		// Queue points awarded on round end
 	Points_PartialAward = 5,	// Smaller amount of round end queue points awarded
-	Points_Consumed = 0,		// The points a selected activator is left with
+	Points_Consumed = 0,		// The points a selected player is left with
 }
 
 // ConVars
@@ -67,6 +69,7 @@ enum {
 	P_Version = 0,
 	P_Enabled,
 	P_AutoEnable,
+	P_UseTimer,
 	P_Debug,
 	S_Unbalance,
 	S_AutoBalance,
@@ -74,8 +77,8 @@ enum {
 	S_Queue,
 	S_FirstBlood,
 	S_Pushaway,
-	S_FreezeTime,
 	S_AllTalk,
+	S_FreezeTime,
 	ConVars_Max
 }
 
@@ -114,6 +117,14 @@ enum {
 	LifeState_DiscardBody
 }
 
+// Round State
+enum {
+	Round_Waiting = 0,
+	Round_Freeze,
+	Round_Active,
+	Round_Win
+}
+
 // Weapon Slots
 enum {
 	Weapon_Primary = 0,
@@ -149,9 +160,12 @@ enum {
 
 // Session Flags
 #define FLAG_WELCOMED				( 1 << 16 )
-#define FLAG_GUARD					( 1 << 17 )
+#define FLAG_OFFICER				( 1 << 17 )
 #define FLAG_WARDEN					( 1 << 18 )
 #define FLAG_PRISONER				( 1 << 19 )
+
+// Game State Flags
+#define FLAG_HAVE_WARDEN			( 1 << 0 )
 
 // Games or Source Mods
 #define FLAG_TF						( 1 << 0 )
@@ -181,6 +195,8 @@ Handle g_hGlowTimer;
 Handle g_hRadialText;
 
 int g_iGame;
+int g_iState;
+int g_iRoundState;
 int g_iPlayers[MAXPLAYERS_TF2][Player_ArrayMax];
 int g_iEnts[Ent_ArrayMax];
 
@@ -249,6 +265,7 @@ public void OnPluginStart()
 	g_ConVar[P_Version]			= CreateConVar("jb_version", PLUGIN_VERSION);
 	g_ConVar[P_Enabled]			= CreateConVar("jb_enabled", "0", "Enabled Jailbreak");
 	g_ConVar[P_AutoEnable]		= CreateConVar("jb_auto_enable", "1", "Allow the plugin to enable and disable itself based on a map's prefix");
+	g_ConVar[P_UseTimer] 		= CreateConVar("jb_round_timer", "1", "Create and use a round timer if one is not built into the map");
 	g_ConVar[P_Debug]			= CreateConVar("jb_debug", "1", "Enable plugin debugging messages showing in server and client consoles");
 	
 	g_ConVar[S_Unbalance]		= FindConVar("mp_teams_unbalance_limit");
@@ -256,12 +273,15 @@ public void OnPluginStart()
 	g_ConVar[S_Scramble]		= FindConVar("mp_scrambleteams_auto");
 	g_ConVar[S_Queue]			= FindConVar("tf_arena_use_queue");
 	g_ConVar[S_FirstBlood]		= FindConVar("tf_arena_first_blood");
-	g_ConVar[S_FreezeTime]		= FindConVar("mp_enableroundwaittime");
 	g_ConVar[S_AllTalk] 		= FindConVar("sv_alltalk");
+	g_ConVar[S_FreezeTime] 		= FindConVar("tf_arena_preround_time");
 	if (g_iGame & FLAG_OF)				g_ConVar[S_Pushaway] = FindConVar("of_teamplay_collision");
 	if (g_iGame & (FLAG_TF|FLAG_TF2C))	g_ConVar[S_Pushaway] = FindConVar("tf_avoidteammates_pushaway");
 	
-	// TODO Test this
+	// Increase the amount of pre-round freeze time possible
+	SetConVarBounds(g_ConVar[S_FreezeTime], ConVarBound_Upper, true, PRE_ROUND_TIME.0);
+	
+	// Cycle through and hook each ConVar
 	for (int i = 0; i < ConVars_Max; i++)
 	{
 		g_ConVar[i].AddChangeHook(ConVar_ChangeHook);
@@ -274,6 +294,7 @@ public void OnPluginStart()
 	RegAdminCmd("sm_jbdata", AdminCommand_PlayerData, ADMFLAG_SLAY, "Print the values of the player data array to your console");
 	RegConsoleCmd("sm_jb", Command_Menu, "Open the Jailbreak menu");
 	RegConsoleCmd("sm_wm", Command_Menu, "Open the Warden menu");
+	RegConsoleCmd("sm_w", Command_CommonCommands, "Become the Warden");
 }
 
 
@@ -307,6 +328,9 @@ void LibraryChanged(const char[] name, bool loaded)
 
 public void OnMapStart()
 {
+	// Reset the round state to WFP
+	g_iRoundState = Round_Waiting;
+	
 	// Auto Enable
 	if (g_ConVar[P_AutoEnable].BoolValue)
 	{
@@ -344,6 +368,10 @@ public void OnConfigsExecuted()
 {
 	if (g_ConVar[P_Enabled].BoolValue)
 		ServerCommand("exec config_jailbreak.cfg");
+	
+	// AllTalk needs to be off for the voice muting to work TODO Consider putting this somewhere else
+	if (g_ConVar[S_AllTalk].BoolValue)
+		g_ConVar[S_AllTalk].IntValue = 0;
 }
 
 
@@ -351,7 +379,7 @@ public void OnConfigsExecuted()
 /**
  * OnMapEnd
  *
- * NOT called when the plugn is unloaded.
+ * NOT called when the plugin is unloaded.
  */
 public void OnMapEnd()
 {
@@ -386,18 +414,79 @@ public void OnClientAuthorized(int client, const char[] auth)
 
 public void OnEntityCreated(int entity, const char[] classname)
 {
-	if (g_ConVar[P_Enabled].BoolValue)
-		if (StrEqual(classname, "tf_ammo_pack"))
-			AcceptEntityInput(entity, "Kill");
+	if (!g_ConVar[P_Enabled].BoolValue)
+		return;
+	
+	if (StrEqual(classname, "tf_ammo_pack"))
+		AcceptEntityInput(entity, "Kill");
+	
+	if (StrEqual(classname, "team_round_timer"))
+		RequestFrame(RequestFrame_RoundTimer, entity);
+}
+
+void RequestFrame_RoundTimer(int entity)
+{
+	char sTargetname[32];
+	GetEntPropString(entity, Prop_Data, "m_iName", sTargetname, sizeof(sTargetname));
+	
+	if (sTargetname[0] == '\0')
+		AcceptEntityInput(entity, "Kill");
+	
+	if (!StrEqual(sTargetname, "JB_ROUND_TIMER"))
+	{
+		int iEnt = CreateEntityByName("team_round_timer");
+		if (iEnt != -1)
+		{
+			char sSetup[3], sTime[5];
+			IntToString(PRE_ROUND_TIME, sSetup, sizeof(sSetup));
+			IntToString(ROUND_TIME, sTime, sizeof(sTime));
+			
+			DispatchKeyValue(iEnt, "setup_length", sSetup);
+			DispatchKeyValue(iEnt, "timer_length", sTime);
+			DispatchKeyValue(iEnt, "targetname", "JB_ROUND_TIMER");
+			DispatchSpawn(iEnt);
+			
+			SetVariantString("1");
+			AcceptEntityInput(iEnt, "ShowInHUD");
+			AcceptEntityInput(iEnt, "Resume");
+			
+			if (g_ConVar[P_UseTimer].BoolValue)
+			{
+				SetVariantString("OnFinished JB_RED_WIN,RoundWin,,0.0,1");
+				AcceptEntityInput(iEnt, "AddOutput");
+				
+				iEnt = CreateEntityByName("game_round_win");
+				if (iEnt != -1)
+				{
+					DispatchKeyValue(iEnt, "targetname", "JB_RED_WIN");
+					//DispatchKeyValue(iEnt, "TeamNum", "2");
+					DispatchSpawn(iEnt);
+					
+					SetVariantString("2");
+					AcceptEntityInput(iEnt, "SetTeam");
+
+					Debug("Team value of game_round_win is %d", GetEntProp(iEnt, Prop_Data, "m_iTeamNum"));
+				}
+			}
+			else
+			{
+				SetVariantString("OnSetupFinished !self,Kill,,0.0,1");
+				AcceptEntityInput(iEnt, "AddOutput");
+			}
+		}
+	}
 }
 
 
 
 public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float vel[3], const float angles[3], int weapon, int subtype, int cmdnum, int tickcount, int seed, const int mouse[2])
 {
+	if (!g_ConVar[P_Enabled].BoolValue)
+		return;
+	
 	static int iMouseMovement[MAXPLAYERS_TF2][3];
 
-	// Detected mouse movement while holding USE
+	// USE is being held
 	if (buttons & IN_USE)
 	{
 		// Player is a Warden
@@ -453,8 +542,7 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 				iMouseMovement[client][2] = 0;
 			}
 			
-			//if (mouse[0] != 0 || mouse[1] != 0 || !(buttons & IN_ATTACK2))
-			if (!(buttons & IN_ATTACK2))	// Right mouse button not being clicked
+			if (!(buttons & IN_ATTACK2))	// Continue cycling HudSync if RMB not being held
 			{
 				if (g_hRadialText == INVALID_HANDLE) g_hRadialText = CreateHudSynchronizer();
 				SetHudTextParamsEx(-1.0, -1.0, 0.1, {255, 255, 255, 255}, {255, 255, 255, 255}, 0, 0.0, 0.0);
@@ -462,12 +550,13 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 			}
 		}
 	}
+	// USE not being held
 	else
 	{
 		iMouseMovement[client][0] = 0;
 		iMouseMovement[client][1] = 0;
 		
-		// Run the command
+		// Run the command if there is one in the buffer
 		if (iMouseMovement[client][2])
 		{
 			switch (iMouseMovement[client][2])
@@ -477,6 +566,8 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 				case 3: DebugEx(client, "Right item chosen");
 				case 4: ClientCommand(client, "voicemenu 0 2");
 			}
+			
+			// Purge command buffer
 			iMouseMovement[client][2] = 0;
 		}
 	}

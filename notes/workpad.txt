@@ -18,9 +18,10 @@ Extend freeze time to let people organise themselves
 - Try brush effects
 Give annotations a sound or take it away
 OnPickup ammo pack check if player had their ammo stripped and switch to their primary.
-Radial menu based on mouse input.
+- Radial menu based on mouse input.
 Warden can't close cells if the button is not in LOS/range
 HUD showing you speaking and listening rules
+game_ui/look target/condition to freeze mouse input
 
 
 Todo
@@ -36,28 +37,25 @@ Follow a brush if it has a relattive origin.
 Menu option to remove warden scale. Toggle or only offer if scaled.
 Only offer the cell button if it exists, using the doors as backup
 Check with basecmm if a player is gagged/muted when doing voice stuff.
-Switch roles when a player switches teams.
-Don't show the 'Is a warden' annotation to the warden
+- Switch roles when a player switches teams.
+- Don't show the 'Is a warden' annotation to the warden
+Find out how to prevent dead players voice chatting to their team
 
 
 Voice Stuff
 -----------
 
-Alive players can communicate to all other live players.
-	VOICE_SPEAKALL
-Alive players cannot hear dead players.
-	VOICE_SPEAKALL
-Dead players can hear live and dead players.
-	VOICE_LISTENALL
-It is sometimes desirable to mute a live red.
-	VOICE_MUTED
+AllTalk needs to be disabled if you want to do any of this.
 
-	#define VOICE_NORMAL 		0 	000000	/**< Allow the client to listen and speak normally. */
-	#define VOICE_MUTED 		1 	000001	/**< Mutes the client from speaking to everyone. */
-	#define VOICE_SPEAKALL 		2 	000010	/**< Allow the client to speak to everyone. */
-	#define VOICE_LISTENALL 	4 	000100	/**< Allow the client to listen to everyone. */
-	#define VOICE_TEAM 			8 	001000	/**< Allow the client to always speak to team, even when dead. */
-	#define VOICE_LISTENTEAM 	16	010000	/**< Allow the client to always hear teammates, including dead ones. */
+VOICE_NORMAL
+	
+
+#define VOICE_NORMAL 		0 	000000	/**< Allow the client to listen and speak normally. */
+#define VOICE_MUTED 		1 	000001	/**< Mutes the client from speaking to everyone. */
+#define VOICE_SPEAKALL 		2 	000010	/**< Allow the client to speak to everyone. */
+#define VOICE_LISTENALL 	4 	000100	/**< Allow the client to listen to everyone. */
+#define VOICE_TEAM 			8 	001000	/**< Allow the client to always speak to team, even when dead. */
+#define VOICE_LISTENTEAM 	16	010000	/**< Allow the client to always hear teammates, including dead ones. */
 
 Flags of 000100 (4 - LISTENALL) while live let me talk to live Berke on my team.
 Flags of 000010 (2 - SPEAKALL) while dead, allowed me to talk to alive players on both teams.
@@ -65,12 +63,14 @@ Flags of 000010 (2 - SPEAKALL) while dead, allowed me to talk to alive players o
 Flags of 000100 (4 - LISTENALL) allowed dead Berke to hear live me on same team.
 Flags of 000100 (4 - LISTENALL) allowed dead Berke to hear dead me on same team.
 
+
 Bugs
 ----
 
 Annotations on parented entities are going to origin. Could be absolute origin?
 My weapons didn't have their ammo stripped on the first round. Did the server not fire a restart event?
-Freeze time did not get extended.
+Timers and round win ents I make aren't being delete on round reset.
+On ba_mlcastle, pressing the button remotely causes a server crash.
 
 
 Findings
@@ -83,3 +83,9 @@ m_iClip2 does not contain Hype.
 Emptying m_iClip1 breaks Cow Mangler Can't fire.
 
 Listening flags by default are 0.
+
+
+Features
+--------
+
+Loads config_jailbreak.cfg

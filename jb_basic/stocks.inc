@@ -136,9 +136,9 @@ stock void HookStuff(bool enabled)
 		g_ConVar[S_Scramble].IntValue 		= 0;
 		g_ConVar[S_Queue].IntValue 			= 0;
 		g_ConVar[S_FirstBlood].IntValue 	= 0;
-		//g_ConVar[S_FreezeTime]
-		//g_ConVar[S_Pushaway]
 		g_ConVar[S_AllTalk].IntValue 		= 0;
+		g_ConVar[S_FreezeTime].IntValue 	= PRE_ROUND_TIME;
+		//g_ConVar[S_Pushaway]
 	}
 	else
 	{
@@ -147,8 +147,8 @@ stock void HookStuff(bool enabled)
 		g_ConVar[S_Scramble].RestoreDefault();
 		g_ConVar[S_Queue].RestoreDefault();
 		g_ConVar[S_FirstBlood].RestoreDefault();
-		g_ConVar[S_FreezeTime].RestoreDefault();
 		g_ConVar[S_AllTalk].RestoreDefault();
+		g_ConVar[S_FreezeTime].RestoreDefault();
 		//g_ConVar[S_Pushaway].RestoreDefault();
 	}
 	

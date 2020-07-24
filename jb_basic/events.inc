@@ -7,9 +7,6 @@ stock void Event_RoundRestart(Event event, const char[] name, bool dontBroadcast
 {
 	PrintToServer("%s Round Reset", PREFIX_SERVER);
 	
-	// Extend freeze time
-	g_ConVar[S_FreezeTime].IntValue = 6;
-	
 	// Reset entity indexes
 	for (int i = 0; i < Ent_ArrayMax; i++)
 		g_iEnts[i] = 0;
@@ -46,29 +43,40 @@ stock void Event_RoundRestart(Event event, const char[] name, bool dontBroadcast
 	if (!g_iEnts[Ent_CellDoors])
 		LogError("Couldn't find cell door");
 	
-	// Reset player flags and issue roles
+	// Reset player and game state flags
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		Player player = new Player(i);
-		
-		if (player.InGame)
-		{
-			if (player.IsWarden)
-				player.MakeWarden(false);
-
-			if (player.Team == Team_Red)
-				player.MakePrisoner();
-			else
-				player.MakePrisoner(false);
-		}
+		if (player.InGame && player.IsWarden)
+			player.MakeWarden(false);
+		player.Flags &= ~MASK_SESSION_FLAGS;
 	}
+	g_iState = 0;
+	
+	// Change round state here to work around player_spawn firing twice on reset
+	g_iRoundState = Round_Freeze;
 }
+
 
 
 
 stock void Event_RoundActive(Event event, const char[] name, bool dontBroadcast)
 {
 	PrintToServer("%s Round Active", PREFIX_SERVER);
+	g_iRoundState = Round_Active;
+	
+	// Give roles
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		Player player = new Player(i);
+		if (player.InGame)
+		{
+			if (player.Team == Team_Red)
+				player.MakePrisoner();
+			else if (player.Team == Team_Blue && !player.IsWarden)
+				player.MakeOfficer();
+		}
+	}
 }
 
 
@@ -76,6 +84,7 @@ stock void Event_RoundActive(Event event, const char[] name, bool dontBroadcast)
 stock void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
 	PrintToServer("%s Round Ended", PREFIX_SERVER);
+	g_iRoundState = Round_Win;
 }
 
 
@@ -99,6 +108,12 @@ stock void Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast)
 {
 	Player player = new Player(GetClientOfUserId(event.GetInt("userid")));
 	player.VoiceAlive();
+	
+	if (g_iRoundState == Round_Freeze && player.Team == Team_Blue && !(g_iState & FLAG_HAVE_WARDEN))
+	{
+		PrintCenterText(player.Index, "%t", "jb_someone_must_assume_warden_role");
+		DebugEx(player.Index, "Sent hint text to %N", player.Index);
+	}
 }
 
 

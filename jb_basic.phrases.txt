@@ -84,6 +84,21 @@
 		"en"			"Output sent to your console"
 	}
 	
+	"jb_warden_during_freeze_time"
+	{
+		"en"			"You can only volunteer to be Warden during pre-round freeze time"
+	}
+	
+	"jb_warden_must_be_on_blue"
+	{
+		"en"			"You must be on Blue to volunteer to become Warden"
+	}
+	
+	"jb_already_have_warden"
+	{
+		"en"			"We already have a Warden"
+	}
+	
 	
 	/**
 	 * Menu - Warden
@@ -190,7 +205,23 @@
 	
 	"jb_you_are_a_warden"
 	{
-        "en"			"You are a Warden. Oversee the systematic elimination of your slave labourers"
+        "en"			"You are a Warden. Oversee the systematic elimination of your workforce"
+	}
+	
+	"jb_you_are_an_officer"
+	{
+        "en"			"You are a Prison Officer. Show them they should respect you"
+	}
+	
+	"jb_someone_must_assume_warden_role"
+	{
+        "en"			"Become Warden using the command /w"
+	}
+	
+	"jb_name_became_warden"
+	{
+		"#format"		"{1:s}"
+        "en"			"{1} became a Warden"
 	}
 	
 	

@@ -428,6 +428,16 @@ methodmap Player < Handle
 			AcceptEntityInput(this.Index, "SetModelScale");
 			ShowAnnotation(this.Index, "jb_annotation_player_is_a_warden", this.Index, _, _, true);
 			PrintToChat(this.Index, "%t %t", "prefix_personal", "jb_you_are_a_warden");
+			
+			for (int i = 1; i <= MaxClients; i++)
+			{
+				char sName[32];
+				GetClientName(this.Index, sName, sizeof(sName));
+				
+				Player player = new Player(i);
+				if (player.InGame && this.Index != player.Index)
+					PrintToChat(player.Index, "%t %t", "prefix", "jb_name_became_warden", sName);
+			}
 		}
 		else
 		{
@@ -435,6 +445,20 @@ methodmap Player < Handle
 			SetVariantString("1.0");
 			AcceptEntityInput(this.Index, "SetModelScale");
 			Debug("Removed %N's warden status", this.Index);
+		}
+	}
+	
+	// Make the Player an Officer
+	public void MakeOfficer(bool grant=true)
+	{
+		if (grant)
+		{
+			this.Flags |= FLAG_OFFICER;
+			PrintToChat(this.Index, "%t %t", "prefix_personal", "jb_you_are_an_officer");
+		}
+		else
+		{
+			this.Flags &= ~FLAG_OFFICER;
 		}
 	}
 	

@@ -187,6 +187,44 @@ Action Timer_RemoveGlow(Handle timer, int glow)
 
 
 
+Action Command_CommonCommands(int client, int args)
+{
+	if (!g_ConVar[P_Enabled].BoolValue)
+		return Plugin_Handled;
+	
+	char sCommand[16];
+	GetCmdArg(0, sCommand, sizeof(sCommand));
+	
+	// Become the Warden
+	if (StrEqual(sCommand, "sm_w", false))
+	{
+		Player player = new Player(client);
+		if (player.Team != Team_Blue)
+		{
+			ReplyToCommand(client, "%t %t", "prefix_personal", "jb_warden_must_be_on_blue");
+		}
+		else if (g_iState & FLAG_HAVE_WARDEN)
+		{
+			ReplyToCommand(client, "%t %t", "prefix_personal", "jb_already_have_warden");
+		}
+		else if (g_iRoundState != Round_Freeze)
+		{
+			ReplyToCommand(client, "%t %t", "prefix_personal", "jb_warden_during_freeze_time");
+		}
+		else
+		{
+			// Make them Warden
+			player.MakeWarden();
+			g_iState |= FLAG_HAVE_WARDEN;
+		}
+	}
+	
+	return Plugin_Handled;
+}
+
+
+
+
 Action Command_Menu(int client, int args)
 {
 	if (!g_ConVar[P_Enabled].BoolValue)
