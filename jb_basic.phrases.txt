@@ -25,26 +25,27 @@
 	/**
 	 * Prefixes
 	 * -----------------------------------------------------------------------------------------------------
+	 * TF2 default colour is 'Blanched Almond' FBECCB
 	 */
 	
 	"prefix"
 	{
-		"en"			"87CEEB[JB]"
+		"en"			"FFD800[Jailbreak]"
 	}
 	
-	"prefix_personal"
+	"prefix_reply"
 	{
-		"en"			"99FF99[JB]"
+		"en"			"B6FF00[Jailbreak]"
 	}
 	
 	"prefix_important"
 	{
-		"en"			"FF8C00[JB]"
+		"en"			"FF6A00[Jailbreak]"
 	}
 	
 	"prefix_error"
 	{
-		"en"			"B22222[JB]"
+		"en"			"FF0000[Jailbreak]"
 	}
 
 
@@ -68,7 +69,7 @@
 	 * Responses to Player Commands
 	 * -----------------------------------------------------------------------------------------------------
 	 */
-	 
+	
 	"jb_engineer_buildings_not_allowed"
 	{
 		"en"			"Sorry, building stuff isn't allowed"
@@ -99,6 +100,150 @@
 		"en"			"We already have a Warden"
 	}
 	
+	"jb_reticle_on_cooldown"
+	{
+		"en"			"The direction system is on cooldown"
+	}
+	
+	"jb_remote_cells_on_cooldown"
+	{
+		"en"			"Remote cell toggle is on cooldown"
+	}
+	
+	"jb_repeat_on_cooldown"
+	{
+		"en"			"Repeat request is on cooldown"
+	}
+	
+	"jb_unable_to_affect_mute"
+	{
+		"#format"		"{1:s}"
+		"en"			"Can't affect {1}'s mute as they have been muted by Admin"
+	}
+	
+	"jb_response_unable_toggle_cells"
+	{
+		"en"			"Unable to toggle cells remotely. Use the button instead"
+	}
+	
+	"jb_warden_cant_change_team"
+	{
+		"en"			"Come on now you're the Warden! That would be rude!"
+	}
+	
+	"jb_marked_target_for_death"
+	{
+		"#format"		"{1:s}"
+		"en"			"You have marked {1} for death!"
+	}
+	
+	"jb_removed_yourself_from_warden_pool"
+	{
+		"en"			"You have withdrawn your name from the Warden pool"
+	}
+	
+	"jb_added_yourself_to_warden_pool"
+	{
+		"en"			"You have added your name to the Warden pool"
+	}
+	
+	"jb_must_be_blue_to_be_warden"
+	{
+		"en"			"You need to switch to Blue to be selected as Warden"
+	}
+	
+	"jb_command_add_points_usage"
+	{
+		"en"			"Usage: sm_addpoints <player> <points>"
+	}
+	
+	"jb_admin_granted_you_queue_points"
+	{
+		"#format"		"{1:s},{2:d},{3:d}"
+		"en"			"{1} granted you {2} queue points ({3})"
+	}
+	
+	"jb_admin_you_granted_queue_points"
+	{
+		"#format"		"{1:s},{2:d},{3:d}"
+		"en"			"You granted {1} {2} queue points ({3})"
+	}
+	
+	"jb_admin_granted_someone_queue_points"
+	{
+		"#format"		"{1:s},{2:s},{3:d},{4:d}"
+		"en"			"{1} granted {2} with {3} queue points ({4})"
+	}
+	
+	"jb_command_set_points_usage"
+	{
+		"en"			"Usage: sm_setpoints <player> <points>"
+	}
+	
+	"jb_admin_set_your_queue_points"
+	{
+		"#format"		"{1:s},{2:d}"
+		"en"			"{1} set your queue points to {2}"
+	}
+	
+	"jb_admin_you_set_queue_points"
+	{
+		"#format"		"{1:s},{2:d}"
+		"en"			"You set {1}'s queue points to {2}"
+	}
+	
+	"jb_admin_set_someone_queue_points"
+	{
+		"#format"		"{1:s},{2:s},{3:d}"
+		"en"			"{1} set {2}'s queue points to {3}"
+	}
+	
+	"jb_noone_opted_into_warden"
+	{
+		"en"			"No one has opted to become a Warden"
+	}
+	
+	"jb_name_taken_out_of_warden_pool"
+	{
+		"en"			"Your name has been taken out of the Warden pool"
+	}
+	
+	"jb_problem_accepting_input"
+	{
+		"en"			"There was a problem sending an input to that entity. Speak to an admin"
+	}
+	
+	"jb_out_of_range_of_button"
+	{
+		"en"			"You are out of range or not in sight of the button"
+	}
+	
+	"jb_out_of_range_of_cell_doors"
+	{
+		"en"			"You are out of range or not in sight of the cell doors"
+	}
+	
+	"jb_you_asked_for_repeat"
+	{
+		"en"			"You asked the Warden to repeat themselves"
+	}
+	
+	
+	/**
+	 * Menu - Items
+	 * -----------------------------------------------------------------------------------------------------
+	 */
+	
+	"jb_menu_item_become_warden"
+	{
+        "en"			"Become the Warden"
+	}
+	
+	"jb_menu_item_help"
+	{
+        "en"			"Help"
+	}
+	
 	
 	/**
 	 * Menu - Warden
@@ -112,27 +257,137 @@
 	
 	"jb_menu_warden_open_cells"
 	{
-		"en"			"Open the cells"
+		"en"			"Open the Cells"
 	}
 	
 	"jb_menu_warden_close_cells"
 	{
-		"en"			"Close the cells"
+		"en"			"Close the Cells"
 	}
 	
 	"jb_menu_warden_press_cell_button"
 	{
-		"en"			"Press the cell button"
+		"en"			"Trigger the Cell Button"
+	}
+	
+	"jb_menu_warden_direct"
+	{
+		"en"			"Direct Prisoners"
+	}
+	
+	"jb_menu_warden_instructions"
+	{
+		"en"			"Common Instructions"
+	}
+	
+	"jb_menu_warden_mark_for_death"
+	{
+		"en"			"Mark Prisoner for Death"
 	}
 	
 	"jb_menu_warden_normal_size"
 	{
-		"en"			"Become normal size"
+		"en"			"Become Normal Size"
 	}
 	
 	"jb_menu_warden_no_ents"
 	{
-		"en"			"No controllable entities found :-("
+		"en"			"Couldn't Find Cells"
+	}
+	
+	"jb_menu_warden_mute_prisoners"
+	{
+		"en"			"Mute All Prisoners"
+	}
+	
+	"jb_menu_warden_unmute_prisoners"
+	{
+		"en"			"Unmute All Prisoners"
+	}
+	
+	"jb_menu_warden_mute_individual_prisoners"
+	{
+		"en"			"Mute Individual Prisoners"
+	}
+	
+	
+	/**
+	 * Menu - Warden Common Instructions
+	 * -----------------------------------------------------------------------------------------------------
+	 */
+	
+	"jb_menu_instructions_title"
+	{
+		"en"			"Common Instructions"
+	}
+	
+	"jb_menu_instructions_yellow_line"
+	{
+		"en"			"\"Move to the Yellow Line\""
+	}
+	
+	"jb_menu_instructions_red_line"
+	{
+		"en"			"\"Move to the Red Line\""
+	}
+	
+	"jb_menu_instructions_dont_move"
+	{
+		"en"			"\"You Must Not Move!\""
+	}
+	
+	"jb_menu_instructions_stand_inline"
+	{
+		"en"			"\"Stand in a Line\""
+	}
+	
+	"jb_menu_instructions_choose_activity"
+	{
+		"en"			"\"Choose an Activity\""
+	}
+	
+	"jb_menu_instructions_follow_targets"
+	{
+		"en"			"\"Follow my Targets\""
+	}
+	
+	"jb_menu_instructions_escapee"
+	{
+		"en"			"\"Someone Has Escaped!\""
+	}
+	
+	"jb_menu_instructions_miscount"
+	{
+		"en"			"\"I Count Too Few Prisoners!\""
+	}
+	
+	
+	/**
+	 * Menu - Mute
+	 * -----------------------------------------------------------------------------------------------------
+	 */
+	
+	"jb_menu_mute_title"
+	{
+		"en"			"Mute Prisoners"
+	}
+	
+	"jb_menu_mute_mute_prisoner"
+	{
+		"#format"		"{1:s}"
+		"en"			"Mute {1}"
+	}
+	
+	"jb_menu_mute_unmute_prisoner"
+	{
+		"#format"		"{1:s}"
+		"en"			"Unmute {1}"
+	}
+	
+	"jb_menu_mute_admin_muted"
+	{
+		"#format"		"{1:s}"
+		"en"			"{1} (ADMIN MUTED)"
 	}
 	
 	
@@ -148,17 +403,17 @@
 	
 	"jb_menu_admin_make_yourself_warden"
 	{
-        "en"			"Make yourself a warden"
+        "en"			"Become a Warden"
 	}
 	
 	"jb_menu_admin_remove_warden_from_yourself"
 	{
-        "en"			"Remove your warden status"
+        "en"			"Retire from Wardenship"
 	}
 	
 	"jb_menu_admin_strip_your_ammo"
 	{
-        "en"			"Strip your primary and secondary ammo"
+        "en"			"Remove Your Ammunition"
 	}
 	
 	/**
@@ -171,6 +426,37 @@
         "en"			"Direct Inmates"
 	}
 	
+	"jb_radial_warden_menu"
+	{
+        "en"			"Warden Menu"
+	}
+	
+	"jb_radial_cells_button"
+	{
+        "en"			"Press Cells Button"
+	}
+	
+	
+	/**
+	 * HUD Elements
+	 * -----------------------------------------------------------------------------------------------------
+	 */
+	
+	"jb_hud_not_muted"
+	{
+        "en"			"Not Muted"
+	}
+	
+	"jb_hud_muted"
+	{
+        "en"			"Muted"
+	}
+	
+	"jb_hud_muted_by_admin"
+	{
+        "en"			"Muted by Admin"
+	}
+	
 	
 	/**
 	 * Information
@@ -180,12 +466,17 @@
 	"jb_welcome"
 	{
 		"#format"		"{1:s}"        // Player name
-        "en"			"Hey, {1}. This server is running 87CEEBJailbreak Basic (working title). If you have comments please speak to me (worMatty)"
+        "en"			"Hey, {1}. Get started with /jbhelp"
 	}
 	
 	"jb_cells_warden_opened"
 	{
         "en"			"The Warden opened the cells remotely"
+	}
+	
+	"jb_cells_you_opened"
+	{
+        "en"			"You opened the cells remotely"
 	}
 	
 	"jb_cells_warden_closed"
@@ -196,6 +487,11 @@
 	"jb_cells_warden_pressed_button"
 	{
         "en"			"The Warden triggered the cell door button remotely"
+	}
+	
+	"jb_cells_you_pressed_button"
+	{
+        "en"			"You have triggered the cell door button remotely"
 	}
 	
 	"jb_you_are_a_prisoner"
@@ -229,7 +525,7 @@
 	 * Annotations
 	 * -----------------------------------------------------------------------------------------------------
 	 */
-	 
+	
 	"jb_annotation_player_is_a_warden"
 	{
 		"#format"		"{1:s}"        // Player name
@@ -254,6 +550,32 @@
         "en"			"{1}:\n\"Go in here!\""
 	}
 	
+	"jb_annotation_marked_target_for_death"
+	{
+		"#format"		"{1:s}"
+		"en"			"{1} is marked for death!"
+	}
+	
+	"jb_annotation_repeat_1"
+	{
+		"en"			"\"Come again?\""
+	}
+	
+	"jb_annotation_repeat_2"
+	{
+		"en"			"\"Say what?!\""
+	}
+	
+	"jb_annotation_repeat_3"
+	{
+		"en"			"\"Could you please repeat that?\""
+	}
+	
+	"jb_annotation_repeat_4"
+	{
+		"en"			"\"Sorry, I wasn't listening\""
+	}
+	
 	
 	/**
 	 * Plugin Testing
@@ -262,6 +584,6 @@
 	
 	"jb_nothing_here"
 	{
-		"en"			"Nothing here yet"
+		"en"			"Nothing here!"
 	}
 }

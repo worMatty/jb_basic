@@ -92,6 +92,15 @@ methodmap Player < Handle
 		}
 	}
 	
+	// Is Valid
+	property bool IsValid
+	{
+		public get()
+		{
+			return (this.Index > 0 && this.Index <= MaxClients);
+		}
+	}
+	
 	// Is Observer
 	property bool IsObserver
 	{
@@ -123,6 +132,30 @@ methodmap Player < Handle
 				return (GetClientTeam(this.Index) == Team_Red || GetClientTeam(this.Index) == Team_Blue);
 			else
 				return false;
+		}
+	}
+	
+	// Is Admin
+	property bool IsAdmin
+	{
+		public get()
+		{
+			//return (GetAdminFlags(GetUserAdmin(this.Index), Access_Effective));
+			return (GetUserAdmin(this.Index) != INVALID_ADMIN_ID);
+		}
+	}
+	
+	// Is Muted
+	property int IsMuted
+	{
+		public get()
+		{
+			if (g_bBasecomm && BaseComm_IsClientMuted(this.Index))
+				return 2;
+			else if (GetClientListeningFlags(this.Index) == VOICE_MUTED)
+				return 1;
+			else
+				return 0;
 		}
 	}
 	
@@ -163,27 +196,6 @@ methodmap Player < Handle
 		if (respawn) TF2_RespawnPlayer(this.Index);
 		
 		Debug("Moved %N to team %d %s", this.Index, team, (respawn) ? "and respawned them" : "");
-		
-		// If running in Open Fortress or TF2C, respawn all players
-		if (g_iGame & (FLAG_OF|FLAG_TF2C)) // TODO Change to a check if the native is available
-		{
-			int iRespawn = CreateEntityByName("game_forcerespawn");
-			if (iRespawn == -1)
-				LogError("Unable to create game_forcerespawn");
-			else
-			{
-				if (!DispatchSpawn(iRespawn))
-					LogError("Unable to spawn game_forcerespawn");
-				else
-				{
-					if (!AcceptEntityInput(iRespawn, "ForceRespawn"))
-						LogError("game_forcerespawn wouldn't accept our ForceRespawn input");
-					else
-						Debug("Respawned all players by creating a game_forcerespawn");
-				}
-				RemoveEdict(iRespawn);
-			}
-		}
 	}
 	
 	// Set Class
@@ -199,7 +211,7 @@ methodmap Player < Handle
 
 	// Get Weapon Index
 	// BUG Use with RequestFrame after spawning or it might return -1
-	public int GetWeapon(int slot=TFWeaponSlot_Primary)
+	public int GetWeapon(int slot = Weapon_Primary)
 	{
 		if (IsClientInGame(this.Index))
 			return GetPlayerWeaponSlot(this.Index, slot);
@@ -208,7 +220,7 @@ methodmap Player < Handle
 	}
 	
 	// Switch to Slot
-	public void SetSlot(int slot=TFWeaponSlot_Primary)
+	public void SetSlot(int slot = Weapon_Primary)
 	{
 		int iWeapon;
 		
@@ -277,25 +289,25 @@ methodmap Player < Handle
 		int iWeapon = this.GetWeapon(slot);
 		if (iWeapon != -1)
 		{
-			if (GetEntProp(iWeapon, Prop_Data, "m_iClip1") != -1)
+			if (GetEntProp(iWeapon, Prop_Data, "m_iClip1") != -1)	// Formerly -1
 			{
-				DebugEx(this.Index, "Clip 1 of slot %d contains %d ammo", slot, GetEntProp(iWeapon, Prop_Data, "m_iClip1"));
+				DebugEx(this.Index, "Slot %d weapon had %d ammo", slot, GetEntProp(iWeapon, Prop_Data, "m_iClip1"));
 				SetEntProp(iWeapon, Prop_Send, "m_iClip1", 0);
 			}
 			
-			if (GetEntProp(iWeapon, Prop_Data, "m_iClip2") != -1)
+			if (GetEntProp(iWeapon, Prop_Data, "m_iClip2") != -1)	// Formerly -1
 			{
-				DebugEx(this.Index, "Clip 2 of slot %d contains %d ammo", slot, GetEntProp(iWeapon, Prop_Data, "m_iClip2"));
+				DebugEx(this.Index, "Slot %d weapon had %d ammo", slot, GetEntProp(iWeapon, Prop_Data, "m_iClip2"));
 				SetEntProp(iWeapon, Prop_Send, "m_iClip2", 0);
 			}
 			
-			// Get the type of ammo the weapon uses
+			// Weapon's ammo type
 			int iAmmoType = GetEntProp(iWeapon, Prop_Send, "m_iPrimaryAmmoType", 1);
 			
-			// Get the player's ammo store table offset
+			// Player ammo table offset
 			int iAmmoTable = FindSendPropInfo("CTFPlayer", "m_iAmmo");
 			
-			// Go to the position in the table for the ammo type and set it to 0
+			// Set quantity of that ammo type in table to 0
 			SetEntData(this.Index, iAmmoTable + (iAmmoType * 4), 0, 4, true);
 		}
 
@@ -309,7 +321,7 @@ methodmap Player < Handle
 	
 	
 	/**
-	 * Plugin Stuff
+	 * Plugin Properties
 	 * --------------------------------------------------
 	 * --------------------------------------------------
 	 */
@@ -352,6 +364,18 @@ methodmap Player < Handle
 		}
 	}
 	
+	// Is Warden
+	property bool IsOfficer
+	{
+		public get()
+		{
+			if (g_iPlayers[this.Index][Player_Flags] & FLAG_OFFICER)
+				return true;
+			else
+				return false;
+		}
+	}
+	
 	// Is Prisoner
 	property bool IsPrisoner
 	{
@@ -385,6 +409,13 @@ methodmap Player < Handle
 		g_iPlayers[this.Index][Player_Flags] = MASK_DEFAULT_FLAGS;
 	}
 	
+	
+	/**
+	 * Plugin Functions
+	 * --------------------------------------------------
+	 * --------------------------------------------------
+	 */
+	
 	/**
 	 * Set a player's queue points value in the data array.
 	 * 
@@ -401,8 +432,13 @@ methodmap Player < Handle
 		g_iPlayers[this.Index][Player_Points] += points;
 	}
 	
+	// Set Queue Points
+	public void SetPoints(int points)
+	{
+		g_iPlayers[this.Index][Player_Points] = points;
+	}
 	
-	// Check Player On Connection TODO Rename
+	// Check Player On Connection
 	public void CheckArray()
 	{
 		// If the player's User ID is not in our array
@@ -418,17 +454,49 @@ methodmap Player < Handle
 		}
 	}
 	
+	// Player Has Flag
+	public bool HasFlag(int flag)
+	{
+		//bool bHasFlag = (g_iPlayers[this.Index][Player_Flags] & flag);
+		//return bHasFlag;
+		return !!(g_iPlayers[this.Index][Player_Flags] & flag);
+		// I don't understand it but it worked. https://forums.alliedmods.net/showthread.php?t=319928
+	}
+	
+	// Player Set Flag
+	public void AddFlag(int flag)
+	{
+		g_iPlayers[this.Index][Player_Flags] |= flag;
+	}
+	
+	// Player Remove Flag
+	public void RemoveFlag(int flag)
+	{
+		g_iPlayers[this.Index][Player_Flags] &= ~flag;
+	}
+	
 	// Make the Player a Warden
 	public void MakeWarden(bool grant=true)
 	{
 		if (grant)
 		{
 			this.Flags |= FLAG_WARDEN;
-			SetVariantString("1.2");
-			AcceptEntityInput(this.Index, "SetModelScale");
-			ShowAnnotation(this.Index, "jb_annotation_player_is_a_warden", this.Index, _, _, true);
-			PrintToChat(this.Index, "%t %t", "prefix_personal", "jb_you_are_a_warden");
+			g_iState |= FLAG_HAVE_WARDEN;
 			
+			SetVariantString("1.2");
+			if (AcceptEntityInput(this.Index, "SetModelScale"))
+				this.Flags |= FLAG_WARDEN_LARGE;
+			
+			ShowAnnotation(this.Index, "jb_annotation_player_is_a_warden", this.Index, _, _, true);
+			
+			char sName[32];
+			GetClientName(this.Index, sName, sizeof(sName));
+			PrintToChatAllEx(this.Index, "%t %t", "prefix", "jb_name_became_warden", sName);
+			ChatResponse(this.Index, true, "%t", "jb_you_are_a_warden");
+			
+			ShowHUD(this.Index);
+			
+			/*
 			for (int i = 1; i <= MaxClients; i++)
 			{
 				char sName[32];
@@ -438,13 +506,15 @@ methodmap Player < Handle
 				if (player.InGame && this.Index != player.Index)
 					PrintToChat(player.Index, "%t %t", "prefix", "jb_name_became_warden", sName);
 			}
+			*/
 		}
 		else
 		{
-			this.Flags &= ~FLAG_WARDEN;
+			this.Flags &= ~FLAG_WARDEN|FLAG_WARDEN_LARGE;
 			SetVariantString("1.0");
 			AcceptEntityInput(this.Index, "SetModelScale");
 			Debug("Removed %N's warden status", this.Index);
+			ShowHUD(this.Index);
 		}
 	}
 	
@@ -454,7 +524,7 @@ methodmap Player < Handle
 		if (grant)
 		{
 			this.Flags |= FLAG_OFFICER;
-			PrintToChat(this.Index, "%t %t", "prefix_personal", "jb_you_are_an_officer");
+			PrintToChat(this.Index, "%t %t", "prefix_reply", "jb_you_are_an_officer");
 		}
 		else
 		{
@@ -470,7 +540,7 @@ methodmap Player < Handle
 			if (!this.IsPrisoner)
 			{
 				this.Flags |= FLAG_PRISONER;
-				PrintToChat(this.Index, "%t %t", "prefix_personal", "jb_you_are_a_prisoner");
+				PrintToChat(this.Index, "%t %t", "prefix_reply", "jb_you_are_a_prisoner");
 			}
 			this.StripAmmo(Weapon_Primary);
 			this.StripAmmo(Weapon_Secondary);
@@ -479,24 +549,26 @@ methodmap Player < Handle
 		{
 			this.Flags &= ~FLAG_PRISONER;
 		}
+		SetEntProp(this.Index, Prop_Send, "m_bIsMiniBoss", grant, 1);	// TODO Does this get reset on death?
 	}
 	
-	// Set 'Alive' Voice Flags
-	public void VoiceAlive()
+	// Mute
+	public bool Mute(bool mute = true)
 	{
-		int iFlags = GetClientListeningFlags(this.Index);
-		SetClientListeningFlags(this.Index, VOICE_SPEAKALL);
-		// While alive, transmit to team mates both alive and dead.
-		// Only receive from live team mates. Transmit to all players including enemy
-		DebugEx(this.Index, "%N's listening flags were %06b, they are now %06b", this.Index, iFlags, GetClientListeningFlags(this.Index));
-	}
-	
-	// Set 'Dead' Void Flags
-	public void VoiceDead()
-	{
-		int iFlags = GetClientListeningFlags(this.Index);
-		SetClientListeningFlags(this.Index, VOICE_LISTENALL);
-		// Transmit to dead team mates. Hear all players including enemy live and dead
-		DebugEx(this.Index, "%N's listening flags were %06b, they are now %06b", this.Index, iFlags, GetClientListeningFlags(this.Index));
+		if (g_bBasecomm && BaseComm_IsClientMuted(this.Index))
+			return false;
+		
+		if (mute)
+		{
+			SetClientListeningFlags(this.Index, VOICE_MUTED);
+			ShowHUD(this.Index);
+		}
+		else
+		{
+			SetClientListeningFlags(this.Index, VOICE_SPEAKALL);
+			ShowHUD(this.Index);
+		}
+		
+		return true;
 	}
 }

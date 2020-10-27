@@ -4,16 +4,17 @@
  */
 
 #include <sourcemod>
-//#include <sdktools>					// Used for GameRules stuff
-//#include <sdkhooks>					// Used for hooking entities
+#include <sdktools>					// Used for GameRules stuff
+#include <sdkhooks>					// Used for working with entities
 
-//#undef REQUIRE_PLUGIN
+#undef REQUIRE_PLUGIN
+#tryinclude <basecomm>				// Don't affect the voice status of admin-muted clients
 //#tryinclude <tf2attributes>		// Used to set player and weapon attributes
 //#tryinclude <Source-Chat-Relay>	// Discord relay
 
 #undef REQUIRE_EXTENSIONS
-#tryinclude <steamtools>		// Used to set the game description
-#tryinclude <tf2_stocks>		// TF2 wrapper functions. Also includes <tf2>, the extension natives
+#tryinclude <steamtools>			// Used to set the game description
+#tryinclude <tf2_stocks>			// TF2 wrapper functions. Also includes <tf2>, the extension natives
 
 
 
@@ -37,7 +38,7 @@
 #define DEBUG
 #define PLUGIN_AUTHOR		"worMatty"
 #define PLUGIN_VERSION		"0.1"
-#define PLUGIN_NAME			"Secret Sauce"
+#define PLUGIN_NAME			"Jailbreak Basic"
 #define PLUGIN_DESCRIPTION	"Basic Jailbreak game mode functions"
 #define MAXPLAYERS_TF2		34		// Source TV + 1 for client index offset
 
@@ -45,8 +46,7 @@
 #define PREFIX_SERVER		"[JB Basic]"
 
 #define STRING_YOUR_MOD		"Source Game Server"	// Default game description when using with unsupported games/mods
-#define PRE_ROUND_TIME		22
-#define ROUND_TIME			600
+#define PRE_ROUND_TIME		20
 
 
 
@@ -61,6 +61,7 @@ enum {
 	Points_Starting = 10,		// Queue points a player receives when connecting for the first time
 	Points_FullAward = 10,		// Queue points awarded on round end
 	Points_PartialAward = 5,	// Smaller amount of round end queue points awarded
+	Points_Incremental = 1,		// Number of points awarded to live players by a timer
 	Points_Consumed = 0,		// The points a selected player is left with
 }
 
@@ -70,16 +71,29 @@ enum {
 	P_Enabled,
 	P_AutoEnable,
 	P_UseTimer,
+	P_RemoteRange,
+	P_RoundTime,
 	P_Debug,
+	
 	S_Unbalance,
 	S_AutoBalance,
 	S_Scramble,
 	S_Queue,
-	S_FirstBlood,
+	S_FirstBlood,	// Not supported by OF
 	S_Pushaway,
-	S_AllTalk,
 	S_FreezeTime,
+	
 	ConVars_Max
+}
+
+// Timers
+enum {
+	Timer_Direction = 0,
+	Timer_Glow,
+	Timer_HUD,
+	Timer_NameText,
+	Timer_QueuePoints,
+	Timer_Max
 }
 
 // Entities to control
@@ -99,8 +113,16 @@ enum {
 	Player_ArrayMax
 }
 
+// Warden Ability Cooldowns
+enum {
+	CD_Directions = 0,
+	CD_CellDoors,
+	CD_Repeat,
+	CD_ArrayMax
+}
+
  enum {
-	Team_None,
+	Team_None = 0,
 	Team_Spec,
 	Team_Red,
 	Team_Blue,
@@ -132,7 +154,8 @@ enum {
 	Weapon_Melee,
 	Weapon_Grenades,
 	Weapon_Building,
-	Weapon_PDA
+	Weapon_PDA,
+	Weapon_ArrayMax
 }
 
 // Ammo Types
@@ -163,9 +186,14 @@ enum {
 #define FLAG_OFFICER				( 1 << 17 )
 #define FLAG_WARDEN					( 1 << 18 )
 #define FLAG_PRISONER				( 1 << 19 )
+#define FLAG_WARDEN_LARGE			( 1 << 20 )
+#define FLAG_WANTS_WARDEN			( 1 << 21 )
 
 // Game State Flags
 #define FLAG_HAVE_WARDEN			( 1 << 0 )
+#define FLAG_PRISONERS_MUTED		( 1 << 1 )
+#define FLAG_REDISTRIBUTING			( 1 << 2 )
+#define FLAG_LOADED_LATE			( 1 << 3 )
 
 // Games or Source Mods
 #define FLAG_TF						( 1 << 0 )
@@ -176,7 +204,8 @@ enum {
 #define MASK_DEFAULT_FLAGS			( FLAG_PREFERENCE | FLAG_FULLPOINTS )
 #define MASK_STORED_FLAGS			( FLAG_PREFERENCE | FLAG_FULLPOINTS | FLAG_ENGLISH )
 #define MASK_SESSION_FLAGS			( 0xFFFF0000 )
-// Note: Only store specific bits to db. Session flags are 15-31
+#define MASK_RESET_ROLES			( FLAG_OFFICER | FLAG_WARDEN | FLAG_PRISONER | FLAG_WARDEN_LARGE )
+// Note: Only store specific bits to db. Session flags are 16-31
 
 
 
@@ -187,18 +216,50 @@ enum {
  */
 
 bool g_bSteamTools;
+bool g_bBasecomm;
 
 ConVar g_ConVar[ConVars_Max];
 
-Handle g_hReticleTimer;
-Handle g_hGlowTimer;
+Handle g_hTimers[Timer_Max];
 Handle g_hRadialText;
+Handle g_hHUDText;
+Handle g_hNameText;
 
 int g_iGame;
 int g_iState;
 int g_iRoundState;
 int g_iPlayers[MAXPLAYERS_TF2][Player_ArrayMax];
 int g_iEnts[Ent_ArrayMax];
+int g_iCooldowns[CD_ArrayMax];
+
+StringMap g_hSound;
+
+StringMap SoundList()
+{
+	StringMap hSound = new StringMap();
+	hSound.SetString("direction_cooldown", 	"player/recharged.wav");
+	hSound.SetString("direction_goto", 		"coach/coach_go_here.wav");
+	hSound.SetString("direction_lookat", 	"coach/coach_look_here.wav");
+	hSound.SetString("direction_kill", 		"coach/coach_defend_here.wav");
+	hSound.SetString("warden_instruction",	"buttons/button17.wav");
+	hSound.SetString("chat_debug", 			"common/warning.wav");
+	hSound.SetString("chat_feedback", (FileExists("sound/ui/chat_display_text.wav", true)) ? "ui/chat_display_text.wav" : "ui/buttonclickrelease.wav");
+	hSound.SetString("repeat_1", 			"vo/k_lab/ba_guh.wav");
+	hSound.SetString("repeat_2", 			"vo/k_lab/ba_whoops.wav");
+	hSound.SetString("repeat_3", 			"vo/k_lab/ba_whatthehell.wav");
+	hSound.SetString("repeat_4", 			"vo/npc/male01/whoops01.wav");
+	hSound.SetString("repeat_5", 			"vo/npc/male01/pardonme02.wav");
+	hSound.SetString("repeat_6", 			"vo/npc/male01/sorry01.wav");
+	hSound.SetString("repeat_7", 			"vo/npc/male01/sorry03.wav");
+	hSound.SetString("repeat_8", 			"vo/k_lab/kl_ohdear.wav");
+	hSound.SetString("repeat_9", 			"vo/npc/male01/pardonme01.wav");
+	hSound.SetString("repeat_10", 			"vo/npc/male01/excuseme01.wav");
+	hSound.SetString("repeat_11", 			"vo/npc/male01/excuseme02.wav");
+	hSound.SetString("repeat_12", 			"vo/k_lab/kl_interference.wav");
+	hSound.SetString("repeat_13", 			"vo/k_lab2/kl_cantleavelamarr.wav"); 	
+	
+	return hSound;
+}
 
 
 
@@ -213,6 +274,7 @@ int g_iEnts[Ent_ArrayMax];
 #include "jb_basic/events"
 #include "jb_basic/commands"
 #include "jb_basic/menus"
+#include "jb_basic/timers"
 
 
 
@@ -251,6 +313,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	
 	MarkNativeAsOptional("Steam_SetGameDescription");
 	
+	if (late) g_iState |= FLAG_LOADED_LATE;
+	
 	return APLRes_Success;
 }
 
@@ -265,18 +329,20 @@ public void OnPluginStart()
 	g_ConVar[P_Version]			= CreateConVar("jb_version", PLUGIN_VERSION);
 	g_ConVar[P_Enabled]			= CreateConVar("jb_enabled", "0", "Enabled Jailbreak");
 	g_ConVar[P_AutoEnable]		= CreateConVar("jb_auto_enable", "1", "Allow the plugin to enable and disable itself based on a map's prefix");
-	g_ConVar[P_UseTimer] 		= CreateConVar("jb_round_timer", "1", "Create and use a round timer if one is not built into the map");
+	g_ConVar[P_UseTimer] 		= CreateConVar("jb_round_timer", "0", "Create and use a round timer if one is not built into the map");
+	g_ConVar[P_RoundTime] 		= CreateConVar("jb_round_time", "600", "Round time, if enabled");
+	g_ConVar[P_RemoteRange] 	= CreateConVar("jb_remote_range", "2600", "Range of the Warden's remote cell door ability when not in LOS");
 	g_ConVar[P_Debug]			= CreateConVar("jb_debug", "1", "Enable plugin debugging messages showing in server and client consoles");
 	
 	g_ConVar[S_Unbalance]		= FindConVar("mp_teams_unbalance_limit");
 	g_ConVar[S_AutoBalance]		= FindConVar("mp_autoteambalance");
 	g_ConVar[S_Scramble]		= FindConVar("mp_scrambleteams_auto");
 	g_ConVar[S_Queue]			= FindConVar("tf_arena_use_queue");
-	g_ConVar[S_FirstBlood]		= FindConVar("tf_arena_first_blood");
-	g_ConVar[S_AllTalk] 		= FindConVar("sv_alltalk");
 	g_ConVar[S_FreezeTime] 		= FindConVar("tf_arena_preround_time");
-	if (g_iGame & FLAG_OF)				g_ConVar[S_Pushaway] = FindConVar("of_teamplay_collision");
-	if (g_iGame & (FLAG_TF|FLAG_TF2C))	g_ConVar[S_Pushaway] = FindConVar("tf_avoidteammates_pushaway");
+	
+	if (!(g_iGame & FLAG_OF))			g_ConVar[S_FirstBlood]	= FindConVar("tf_arena_first_blood");
+	if (g_iGame & FLAG_OF)				g_ConVar[S_Pushaway] 	= FindConVar("of_teamplay_collision");
+	if (g_iGame & (FLAG_TF|FLAG_TF2C))	g_ConVar[S_Pushaway] 	= FindConVar("tf_avoidteammates_pushaway");
 	
 	// Increase the amount of pre-round freeze time possible
 	SetConVarBounds(g_ConVar[S_FreezeTime], ConVarBound_Upper, true, PRE_ROUND_TIME.0);
@@ -284,17 +350,51 @@ public void OnPluginStart()
 	// Cycle through and hook each ConVar
 	for (int i = 0; i < ConVars_Max; i++)
 	{
-		g_ConVar[i].AddChangeHook(ConVar_ChangeHook);
-		char sName[64];
-		g_ConVar[i].GetName(sName, sizeof(sName));
-		Debug("Hooked convar %s", sName);
+		if (g_ConVar[i] != null)
+		{
+			g_ConVar[i].AddChangeHook(ConVar_ChangeHook);
+			char sName[64];
+			g_ConVar[i].GetName(sName, sizeof(sName));
+			Debug("Hooked convar %s", sName);
+		}
+		else
+			LogError("Unable to hook ConVar number %d", i);
 	}
 	
 	// Commands
-	RegAdminCmd("sm_jbdata", AdminCommand_PlayerData, ADMFLAG_SLAY, "Print the values of the player data array to your console");
 	RegConsoleCmd("sm_jb", Command_Menu, "Open the Jailbreak menu");
 	RegConsoleCmd("sm_wm", Command_Menu, "Open the Warden menu");
 	RegConsoleCmd("sm_w", Command_CommonCommands, "Become the Warden");
+	RegConsoleCmd("sm_jbhelp", Command_CommonCommands, "Jailbreak basic help");
+	RegConsoleCmd("sm_r", Command_CommonCommands, "Ask the Warden to repeat their instruction");
+	
+	// Admin Commands
+	RegAdminCmd("sm_addpoints", Command_AdminCommands, ADMFLAG_SLAY, "Give a player some queue points");
+	RegAdminCmd("sm_setpoints", Command_AdminCommands, ADMFLAG_SLAY, "Set a player's queue points");
+	
+	// Debug Commands
+	RegAdminCmd("sm_jbdata", Command_DebugCommands, ADMFLAG_SLAY, "Print the values of the player data array to your console");
+	RegAdminCmd("sm_stripslot", Command_DebugCommands, ADMFLAG_SLAY, "Strip one of your weapons of its ammo");
+	RegAdminCmd("sm_redist", Command_DebugCommands, ADMFLAG_SLAY, "Redistribute players");
+	RegAdminCmd("sm_jbtextdemo", Command_DebugCommands, ADMFLAG_SLAY, "Print example text strings to your chat box");
+	RegConsoleCmd("sm_lflags", Command_DebugCommands, "Print your listen flags to chat for voice chat debugging");
+	RegConsoleCmd("sm_clipvals", Command_DebugCommands, "Print your weapon clip values to console");
+	
+	// Build Sound List
+	g_hSound = SoundList();
+	
+	// Late Loading
+	if (g_iState & FLAG_LOADED_LATE)
+	{
+		// Initialise Player Data Array
+		LogMessage("Plugin loaded late. Initialising the player data array");
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			Player player = new Player(i);
+			if (player.InGame)
+				player.CheckArray();
+		}
+	}
 }
 
 
@@ -306,6 +406,8 @@ public void OnAllPluginsLoaded()
 {
 	if (!(g_bSteamTools = LibraryExists("SteamTools")))
 		LogMessage("Library not found: SteamTools. Unable to change server game description");
+	if (!(g_bBasecomm = LibraryExists("basecomm")))
+		LogMessage("Library not found: SourceMod Basic Comms Control (basecomm)");
 }
 
 public void OnLibraryAdded(const char[] name)
@@ -320,8 +422,10 @@ public void OnLibraryRemoved(const char[] name)
 
 void LibraryChanged(const char[] name, bool loaded)
 {
-	if (StrEqual(name, "Steam Tools"))	
+	if (StrEqual(name, "Steam Tools"))
 		g_bSteamTools = loaded;
+	if (StrEqual(name, "basecomm"))
+		g_bBasecomm = loaded;
 }
 
 
@@ -330,6 +434,9 @@ public void OnMapStart()
 {
 	// Reset the round state to WFP
 	g_iRoundState = Round_Waiting;
+	
+/*	// Add assets to the download table and precache them
+	PrepareAssets();
 	
 	// Auto Enable
 	if (g_ConVar[P_AutoEnable].BoolValue)
@@ -342,7 +449,7 @@ public void OnMapStart()
 			LogMessage("Detected a Jailbreak map. Enabling game mode functions");
 			g_ConVar[P_Enabled].SetBool(true);
 		}
-	}
+	}*/
 }
 
 
@@ -366,12 +473,29 @@ public int Steam_FullyLoaded()
  */
 public void OnConfigsExecuted()
 {
+	// Add assets to the download table and precache them
+	//PrepareAssets();
+	
+	// Auto Enable
+	if (g_ConVar[P_AutoEnable].BoolValue)
+	{
+		char sMapName[32];
+		GetCurrentMap(sMapName, sizeof(sMapName));
+		
+		if (StrContains(sMapName, "jb_", false) != -1 || StrContains(sMapName, "ba_", false) != -1 ||
+			StrContains(sMapName, "jail_", false) != -1 || StrContains(sMapName, "jail_", false) != -1)
+		// TODO Ask Berke if 'jail_' was the right prefix
+		{
+			LogMessage("Detected a Jailbreak map. Enabling game mode functions");
+			g_ConVar[P_Enabled].SetBool(true);
+		}
+	}
+	
+	// Set required ConVar values in case the server reversed them
+	//SetConVars();
+	
 	if (g_ConVar[P_Enabled].BoolValue)
 		ServerCommand("exec config_jailbreak.cfg");
-	
-	// AllTalk needs to be off for the voice muting to work TODO Consider putting this somewhere else
-	if (g_ConVar[S_AllTalk].BoolValue)
-		g_ConVar[S_AllTalk].IntValue = 0;
 }
 
 
@@ -420,18 +544,26 @@ public void OnEntityCreated(int entity, const char[] classname)
 	if (StrEqual(classname, "tf_ammo_pack"))
 		AcceptEntityInput(entity, "Kill");
 	
-	if (StrEqual(classname, "team_round_timer"))
-		RequestFrame(RequestFrame_RoundTimer, entity);
+	//if (StrEqual(classname, "team_round_timer"))
+	//	RequestFrame(RequestFrame_RoundTimer, entity);
 }
 
-void RequestFrame_RoundTimer(int entity)
+stock void RequestFrame_RoundTimer(int entity)
 {
+	if (!IsValidEdict(entity))
+		return;
+	
 	char sTargetname[32];
 	GetEntPropString(entity, Prop_Data, "m_iName", sTargetname, sizeof(sTargetname));
 	
-	if (sTargetname[0] == '\0')
-		AcceptEntityInput(entity, "Kill");
+	Debug("team_round_timer %d detected with targetname \"%s\"", entity, sTargetname);
 	
+/*	if (sTargetname[0] == '\0')
+	{
+		Debug("Killing team_round_timer %d with no targetname", entity);
+		AcceptEntityInput(entity, "Kill");
+	}
+*/
 	if (!StrEqual(sTargetname, "JB_ROUND_TIMER"))
 	{
 		int iEnt = CreateEntityByName("team_round_timer");
@@ -439,12 +571,13 @@ void RequestFrame_RoundTimer(int entity)
 		{
 			char sSetup[3], sTime[5];
 			IntToString(PRE_ROUND_TIME, sSetup, sizeof(sSetup));
-			IntToString(ROUND_TIME, sTime, sizeof(sTime));
+			g_ConVar[P_RoundTime].GetString(sTime, sizeof(sTime));
 			
 			DispatchKeyValue(iEnt, "setup_length", sSetup);
 			DispatchKeyValue(iEnt, "timer_length", sTime);
 			DispatchKeyValue(iEnt, "targetname", "JB_ROUND_TIMER");
-			DispatchSpawn(iEnt);
+			if (DispatchSpawn(iEnt))
+				Debug("Created a team_round_timer %d with targetname JB_ROUND_TIMER", iEnt);
 			
 			SetVariantString("1");
 			AcceptEntityInput(iEnt, "ShowInHUD");
@@ -481,7 +614,7 @@ void RequestFrame_RoundTimer(int entity)
 
 public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float vel[3], const float angles[3], int weapon, int subtype, int cmdnum, int tickcount, int seed, const int mouse[2])
 {
-	if (!g_ConVar[P_Enabled].BoolValue)
+	if (!g_ConVar[P_Enabled].BoolValue || g_iRoundState != Round_Active)
 		return;
 	
 	static int iMouseMovement[MAXPLAYERS_TF2][3];
@@ -507,9 +640,16 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 				iMouseMovement[client][2] = 0;
 			}
 			
-			char sTop[64] = "  Top Item  ";
-			char sLeft[64] = "  Left Item  ";
-			char sRight[64] = "  Right Item  ";
+			char sTop[64];
+			Format(sTop, sizeof(sTop), "  %t  ", "jb_radial_warden_menu");
+			
+			char sLeft[64];
+			if (g_iEnts[Ent_CellButton])
+				Format(sLeft, sizeof(sLeft), "  %64t  ", "jb_radial_cells_button");
+			
+			char sRight[64];
+			Format(sRight, sizeof(sRight), "  %64s  ", "");
+			
 			char sBottom[64];
 			Format(sBottom, sizeof(sBottom), "  %t  ", "jb_radial_direct_prisoners");
 			
@@ -522,13 +662,13 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 			else if (iMouseMovement[client][0] < -100)
 			{
 				TrimString(sLeft);
-				Format(sLeft, sizeof(sLeft), "❱ %s ❰", sLeft);
+				if (g_iEnts[Ent_CellButton]) Format(sLeft, sizeof(sLeft), "❱ %s ❰", sLeft);
 				iMouseMovement[client][2] = 2;
 			}
 			else if (iMouseMovement[client][0] > 90)
 			{
-				TrimString(sRight);
-				Format(sRight, sizeof(sRight), "❱ %s ❰", sRight);
+				//TrimString(sRight);
+				//Format(sRight, sizeof(sRight), "❱ %s ❰", sRight);
 				iMouseMovement[client][2] = 3;
 			}
 			else if (iMouseMovement[client][1] > 30)
@@ -546,7 +686,7 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 			{
 				if (g_hRadialText == INVALID_HANDLE) g_hRadialText = CreateHudSynchronizer();
 				SetHudTextParamsEx(-1.0, -1.0, 0.1, {255, 255, 255, 255}, {255, 255, 255, 255}, 0, 0.0, 0.0);
-				ShowSyncHudText(client, g_hRadialText, "%s\n\n%s                    %s\n\n%s", sTop, sLeft, sRight, sBottom);
+				ShowSyncHudText(client, g_hRadialText, "%s\n\n%s%s\n\n%s", sTop, sLeft, sRight, sBottom);
 			}
 		}
 	}
@@ -561,9 +701,9 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 		{
 			switch (iMouseMovement[client][2])
 			{
-				case 1: DebugEx(client, "Top item chosen");
-				case 2: DebugEx(client, "Left item chosen");
-				case 3: DebugEx(client, "Right item chosen");
+				case 1: MenuFunction(client, "menu_warden");
+				case 2: if (g_iEnts[Ent_CellButton]) ToggleCells(client);
+				//case 3: DebugEx(client, "Right item chosen");
 				case 4: ClientCommand(client, "voicemenu 0 2");
 			}
 			
@@ -571,4 +711,11 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 			iMouseMovement[client][2] = 0;
 		}
 	}
+}
+
+
+
+public void BaseComm_OnClientMute(int client, bool muteState)
+{
+	ShowHUD(client);
 }

@@ -1,0 +1,7 @@
+materials/models/wormatty/test/jb_reticle1/green_gradient.vmt
+materials/wormatty/test/green_gradient.vtf
+models/wormatty/test/jb_reticle1.dx80.vtx
+models/wormatty/test/jb_reticle1.dx90.vtx
+models/wormatty/test/jb_reticle1.mdl
+models/wormatty/test/jb_reticle1.sw.vtx
+models/wormatty/test/jb_reticle1.vvd

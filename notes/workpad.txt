@@ -10,42 +10,87 @@ Multiple wardens
 - Reticle prop instead of beam that changes size depending on red numbers
 - Key combinations for special warden actions
 - Auto hook buttons and doors with matching names
-Auto distribute to make up balancing based on a ratio, admins immune
-Extend freeze time to let people organise themselves
+- Auto distribute to make up balancing based on a ratio, admins immune
+- Extend freeze time to let people organise themselves
 - Trace mask should go through glass
 - Replace some of the "Go, go, go!" lines with alternate responses and mute the text chat spam
 - Glow prop_dynamic. "Investigate this!"
 - Try brush effects
-Give annotations a sound or take it away
+- Give annotations a sound or take it away
 OnPickup ammo pack check if player had their ammo stripped and switch to their primary.
 - Radial menu based on mouse input.
-Warden can't close cells if the button is not in LOS/range
-HUD showing you speaking and listening rules
-game_ui/look target/condition to freeze mouse input
+- Warden can't close cells if the button is not in LOS/range
+- HUD showing you speaking and listening rules
+- game_ui/look target/condition to freeze mouse input (nah)
+Make dead text chat semi transparent.
+- Unmute all at round end. - TEST
+- People opt in to Warden and the Warden is selected on round active.
+Pick up map's own reticle model using a special prop_dynamic targetname.
+A random guard gets some special sidekick ability like being able to tranq (slow/stun) three times.
+Guards drop key crads that grant access to the armory.
+The Warden has a PDA-like device used to remotely trigger door cells and other things that they drop upon death or maybe with L.
+Don't display annotations on yourself if you are in thirdperson.
+Maybe put someone in TP when they have been marked for death so they realise it and f/o?
 
 
 Todo
 ----
 
 - Strip ammo
-Replace some weapons
-Mute the fuckers and gag em - TEST
-Temporarily change the existing targetname of models and change it back after spawning the glow. - TEST
-Reticle spam cooldown.
-Menu command spam cooldown.
-Follow a brush if it has a relattive origin.
-Menu option to remove warden scale. Toggle or only offer if scaled.
-Only offer the cell button if it exists, using the doors as backup
-Check with basecmm if a player is gagged/muted when doing voice stuff.
+Replace some weapons?
+- Mute the fuckers and gag em - (done but not in the way I originally wanted)
+- Temporarily change the existing targetname of models and change it back after spawning the glow.
+- Reticle spam cooldown.
+- Menu command spam cooldown.
+Follow a brush if it has a relative origin.
+- Menu option to remove warden scale. Toggle or only offer if scaled.
+- Only offer the cell button if it exists, using the doors as backup
+- Check with basecomm if a player is gagged/muted when doing voice stuff.
 - Switch roles when a player switches teams.
 - Don't show the 'Is a warden' annotation to the warden
-Find out how to prevent dead players voice chatting to their team
+- Find out how to prevent dead players voice chatting to their team
+- Cooldown: Refill sound. Display always to warden. 
+- Allow Warden to mute prisoners.
+- Allow Warden to mute individual prisoners.
+Grant glow ability to Officers?
+- Players can ask for a repeat. Cooldown.
+Name the Warden with a prefix? Or make them glow when voice chatting?
+- Help command.
+- Apply cvars OnConfigsExecuted before config_jailbreak?
+Can you cache particles? ParticleEffectNames?
+- Warden can target players. - EDIT HELP
+- Move HUD right a bit for TF2C.
+- Show player names.
+- See prisoner health.
+"A prisoner has rebelled"
+- Common phrases in a menu.
+Warden text instruction system. Usermessages?
+More text sounds.
+ConVars?
+Refinements to clip draining and weapon restriction.
+Warden grace period at start of round.
+Utilise sesson flag for perma-Warden pref.
+- Add targeting system actions to menu.
+Prevent people firing during freeze time.
+"Warden has been killed?"
+Offer auto mute reds for the first twenty or thirty seconds.
+First round could be a mess-around round.
+Add a vote to keep people off a certain team.
+Temp mute blue people when warden is speaking. Maybe use a key combo?
+Add a range indicator to the button/door(s) when out of range.
+Some maps also have a close_cells button. e.g. lunapark, mlcastle.
+Perhaps check if the cell door button is locked.
+Backport code developments from DTK including new chat functions.
+Add alternative to training_annotation for OF.
+Stop the convar change hook from printing non-JB convar changes.
+
 
 
 Voice Stuff
 -----------
 
 AllTalk needs to be disabled if you want to do any of this.
+Update: No it doesn't. It just changes the behaviour of NORMAL so both teams can talk.
 
 VOICE_NORMAL
 	
@@ -67,10 +112,27 @@ Flags of 000100 (4 - LISTENALL) allowed dead Berke to hear dead me on same team.
 Bugs
 ----
 
-Annotations on parented entities are going to origin. Could be absolute origin?
-My weapons didn't have their ammo stripped on the first round. Did the server not fire a restart event?
-Timers and round win ents I make aren't being delete on round reset.
+- Annotations on parented entities are going to origin. Could be absolute origin? (Ignore for now)
+- My weapons didn't have their ammo stripped on the first round. Did the server not fire a restart event?
 On ba_mlcastle, pressing the button remotely causes a server crash.
+- Can't trigger buttons in TF2C or set my model scale. AcceptEntityInput not working?
+- TF2 particles on training annot? show_effect.
+- OF crashes (caused by incomplete or faulty game data)
+- Player queue points were not be reset when chosen as Warden.
+Does m_bIsMiniBoss get reset on death or round restart? Do I need to remove it?
+- ba_mlcastle_v10 tested the activator on cell door button press. Since I was passing 'null' as the activator and caller it crashed the server.
+	Tip: If you do AcceptEntityInput on anything that fires an output in response, pass an activator and caller entity index.
+If a mapper makes each door an individual entity, and does not provide a named button, we can only open one door remotely.
+
+L 07/31/2020 - 18:48:25: [SM] Exception reported: Property "m_bIsMiniBoss" not found (entity 1/player)
+L 07/31/2020 - 18:48:25: [SM] Blaming: open_fortress/jb_basic.smx
+L 07/31/2020 - 18:48:25: [SM] Call stack trace:
+L 07/31/2020 - 18:48:25: [SM]   [0] SetEntProp
+L 07/31/2020 - 18:48:25: [SM]   [1] Line 552, jb_basic/methodmaps.inc::Player.MakePrisoner
+L 07/31/2020 - 18:48:25: [SM]   [2] Line 151, jb_basic/events.inc::Event_RoundActive
+
+In TF2C
+	Commands not working: r, w, setpoints, addpoints 
 
 
 Findings
@@ -80,7 +142,18 @@ m_iClip1 is the current clip of weapons like the shotgun.
 I don't know what m_iClip2 is used for.
 Flamethrower does not use m_iClip1. Perhaps because it's not a clip. Nor does MG or SR.
 m_iClip2 does not contain Hype.
-Emptying m_iClip1 breaks Cow Mangler Can't fire.
+Emptying m_iClip1 breaks Cow Mangler. Can't fire.
+
+Prop_Send clip values are 255 while Prop_Data are -1.
+
+m_iClip1 == 255:
+	Mad Milk,
+	Cleaver,
+	Buff Banner
+
+Setting 255 clip weapons to any other number prevents them being used.
+
+Cow Mangler clip1 is 20!?
 
 Listening flags by default are 0.
 
@@ -89,3 +162,5 @@ Features
 --------
 
 Loads config_jailbreak.cfg
+
+
