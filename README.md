@@ -1,5 +1,5 @@
 # jb_basic
-A basic Jailbreak plugin
+A basic Jailbreak plugin.
 
 ## Why?
 Because I wanted to help my friends test Jailbreak maps on our servers but the existing plugins feel too complicated to get working, and aren't suitable for a multi-game mode environment. i also wanted to try some new things I'd never done before, and rewrite a lot of the code for my Deathrun plugin so it was cleaner. This plugin shares a lot of the same methods and actions as that one, which I will be able to transport when I go back to working on it. This has also been a good test and practicing of my abilities as a Source Pawn scripter, or indeed a 'programmer' in general.
