@@ -25,6 +25,8 @@ To get a list of ConVars in server console, do `sm cvars jb_basic`. To get a lis
 * Fancy effects
 * No need for config files
 
+<video width="560" height="315" src="https://www.youtube.com/embed/lkuec73AmdY" title="YouTube video player"></video>
+
 ### At length
 * Instead of a beam circle, the warden target is a model that's much easier to see, looks better and can accommodate more players.
 * When the warden targets a func_door or func_brush brush entity, or a prop_dynamic model, brushes are tinted green and models are given a green glow outline.
