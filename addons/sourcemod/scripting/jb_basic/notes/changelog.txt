@@ -1,0 +1,8 @@
+Modifications to 0.1 Prior to Release
+-------------------------------------
+
+Changes:
+* The game_round_win entity spawned for the round timer now resets the round.
+* By default, the cvar for creating a round timer is now disabled. [1]
+
+[1] I don't want to force map designers to deal with a round timer imposed on them by a plugin so I have disabled this cvar. I want map authors to choose their own time and round end effects, just like in deathrun. If a map author wanted to keep entities the same as they were in the previous rounds they could set their game_round_win to not do a reset on round restart, which could make for some interesting gameplay effects!

@@ -1,6 +1,8 @@
 Jailbreak Workpad
 =================
 
+Key: - = done.
+
 Ideas
 -----
 
@@ -31,6 +33,7 @@ Guards drop key crads that grant access to the armory.
 The Warden has a PDA-like device used to remotely trigger door cells and other things that they drop upon death or maybe with L.
 Don't display annotations on yourself if you are in thirdperson.
 Maybe put someone in TP when they have been marked for death so they realise it and f/o?
+A guard could shout at prisoners to intimidate them. It could be an AoE stun that puts them into a humiliation state. It could have a cooldown and law of diminishing returns.
 
 
 Todo
@@ -83,6 +86,8 @@ Perhaps check if the cell door button is locked.
 Backport code developments from DTK including new chat functions.
 Add alternative to training_annotation for OF.
 Stop the convar change hook from printing non-JB convar changes.
+Take spies out of cloak when their weapons are removed.
+During pre-round time, prisoners are able to use projectile weapons to damage breakable objects.
 
 
 
@@ -132,7 +137,9 @@ L 07/31/2020 - 18:48:25: [SM]   [1] Line 552, jb_basic/methodmaps.inc::Player.Ma
 L 07/31/2020 - 18:48:25: [SM]   [2] Line 151, jb_basic/events.inc::Event_RoundActive
 
 In TF2C
-	Commands not working: r, w, setpoints, addpoints 
+	Commands not working: r, w, setpoints, addpoints
+
+Setting convar bounds OnPluginStart overrides other plugins and respects plugin load order. Do this on enable instead.
 
 
 Findings
@@ -164,3 +171,52 @@ Features
 Loads config_jailbreak.cfg
 
 
+
+Game Mode Ideas
+---------------
+
+Footsteps giving away inmate location.
+Security systems that detect rebellers. Lazer grids, motion detection, microphones, DSP to make things echo. 
+
+
+
+Vague Bugs
+----------
+
+Map changes and We Have a Warden. I am on red.
+
+ [JB Basic] Player points and preference flags
+  Please note: The table will show values for unoccupied slots. These are from
+  previous players and are reset when someone new takes the slot.
+
+ Index | User ID | Steam ID   | Name                             | Points | Flags
+ ----------------------------------------------------------------------------------------
+     1 |       2 |    1047392 | ⛐ worMatty                     |     15 | 000001 000011
+     2 |      36 | 1029400450 | mezayed7                         |     66 | 000001 000011
+     3 |      37 |  341699837 | Semicolon Backslash              |     22 | 000001 000011
+     4 |      38 |  366395782 | Chicken Chicken                  |     24 | 000001 000011
+     5 |      23 |          0 | <no player>                      |     10 | 000000 000011
+     6 |      24 |          0 | <no player>                      |     10 | 000000 000011
+     7 |       8 |  190285622 | Berke                            |     14 | 000001 000011
+     8 |      25 |          0 | <no player>                      |     10 | 000000 000011
+     9 |      26 |          0 | <no player>                      |     10 | 000000 000011
+    10 |      27 |          0 | <no player>                      |     10 | 000000 000011
+    11 |      28 |          0 | <no player>                      |     10 | 000000 000011
+    12 |      29 |          0 | <no player>                      |     10 | 000000 000011
+    13 |      30 |          0 | <no player>                      |     10 | 000000 000011
+    14 |      31 |          0 | <no player>                      |     10 | 000000 000011
+    15 |      32 |          0 | <no player>                      |     10 | 000000 000011
+    16 |      33 |          0 | <no player>                      |     10 | 000000 000011
+    17 |      34 |          0 | <no player>                      |     10 | 000000 000011
+    18 |      19 |          0 | <no player>                      |     10 | 000000 000011
+    19 |       0 |          0 | <no player>                      |      0 | 000000 000000
+    20 |       0 |          0 | <no player>                      |      0 | 000000 000000
+    21 |       0 |          0 | <no player>                      |      0 | 000000 000000
+    22 |       0 |          0 | <no player>                      |      0 | 000000 000000
+    23 |       0 |          0 | <no player>                      |      0 | 000000 000000
+    24 |       0 |          0 | <no player>                      |      0 | 000000 000000
+ ----------------------------------------------------------------------------------------
+ Game State Flags: 000001  Round State: 0
+ 
+ 
+ Unbalancing doesn't seem to work.
