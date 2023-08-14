@@ -1,3 +1,6 @@
+#pragma semicolon 1
+
+
 /**
  * Client Commands
  * ----------------------------------------------------------------------------------------------------
@@ -53,11 +56,11 @@ Action Command_Listener(int client, const char[] command, int args)
 				ShowHUD();
 			}
 			
-			if (g_hTimers[Timer_Direction] != null)
-				TriggerTimer(g_hTimers[Timer_Direction]);
+			if (g_Timers[Timer_Direction] != null)
+				TriggerTimer(g_Timers[Timer_Direction]);
 				
-			if (g_hTimers[Timer_Glow] != null)
-				TriggerTimer(g_hTimers[Timer_Glow]);
+			if (g_Timers[Timer_Glow] != null)
+				TriggerTimer(g_Timers[Timer_Glow]);
 
 			// Is it a door or func_brush?
 			bool bEntityTargeted;
@@ -111,7 +114,7 @@ Action Command_Listener(int client, const char[] command, int args)
 						DispatchKeyValue(iGlow, "GlowColor", "0 255 0 255");
 						DispatchKeyValue(iGlow, "targetname", "JB_GLOW");
 						DispatchSpawn(iGlow);
-						g_hTimers[Timer_Glow] = CreateTimer(10.0, Timer_RemoveGlow, EntIndexToEntRef(iGlow));
+						g_Timers[Timer_Glow] = CreateTimer(10.0, Timer_RemoveGlow, EntIndexToEntRef(iGlow));
 					}
 					
 					// Restore its targetname
@@ -143,7 +146,7 @@ Action Command_Listener(int client, const char[] command, int args)
 					GetCrosshair(player.Index, vDest);
 					TeleportEntity(iEnt, vDest, NULL_VECTOR, NULL_VECTOR);
 					ShowAnnotation(player.Index, "jb_annotation_move_here", iEnt, 96.0, _, _, "direction_goto");
-					g_hTimers[Timer_Direction] = CreateTimer(10.0, Timer_RemoveReticle, EntIndexToEntRef(iEnt));
+					g_Timers[Timer_Direction] = CreateTimer(10.0, Timer_RemoveReticle, EntIndexToEntRef(iEnt));
 				}
 				else
 				{
@@ -168,7 +171,7 @@ Action Command_Listener(int client, const char[] command, int args)
 			int iTarget = GetClientAimTarget(player.Index, true);
 			Player iPlayer = new Player(iTarget);
 			
-			if (iPlayer.IsValid && iPlayer.Team == Team_Red)
+			if (iPlayer.IsValid && iPlayer.Team == Team_Inmates)
 			{
 				char sName[32];
 				GetClientName(iPlayer.Index, sName, sizeof(sName));
@@ -222,7 +225,7 @@ Action Command_Listener(int client, const char[] command, int args)
 
 Action Command_CommonCommands(int client, int args)
 {
-	if (!g_ConVar[P_Enabled].BoolValue)
+	if (!g_ConVars[P_Enabled].BoolValue)
 		return Plugin_Handled;
 	
 	char sCommand[16];
@@ -242,7 +245,7 @@ Action Command_CommonCommands(int client, int args)
 			player.AddFlag(FLAG_WANTS_WARDEN);
 			ReplyToCommand(player.Index, "%t %t", "prefix_reply", "jb_added_yourself_to_warden_pool");
 			
-			if (player.Team != Team_Blue)
+			if (player.Team != Team_Officers)
 				ReplyToCommand(player.Index, "%t %t", "prefix_reply", "jb_must_be_blue_to_be_warden");
 		}
 	}
@@ -251,11 +254,11 @@ Action Command_CommonCommands(int client, int args)
 	else if (StrEqual(sCommand, "sm_r", false))
 	{
 		// If the ability is on cooldown
-		if (g_iCooldowns[CD_Repeat] > 2 && g_iRoundState == Round_Active && player.Team == Team_Red && player.IsAlive)
+		if (g_iCooldowns[CD_Repeat] > 2 && g_iRoundState == Round_Active && player.Team == Team_Inmates && player.IsAlive)
 		{
 			ChatResponse(client, _, "%t", "jb_repeat_on_cooldown");
 		}
-		else if (g_iRoundState == Round_Active && player.Team == Team_Red && player.IsAlive)
+		else if (g_iRoundState == Round_Active && player.Team == Team_Inmates && player.IsAlive)
 		{
 			// Select translation phrase
 			static int iNumberOfPhrases;
@@ -285,7 +288,7 @@ Action Command_CommonCommands(int client, int args)
 			// Get Sound List Bounds
 			if (!iMaxSounds)
 			{
-				StringMapSnapshot hSnapshot = g_hSound.Snapshot();
+				StringMapSnapshot hSnapshot = g_Sounds.Snapshot();
 				int iLength = hSnapshot.Length;
 				
 				char sKeyString[32];
@@ -306,9 +309,8 @@ Action Command_CommonCommands(int client, int args)
 			{
 				char sKeyString[32], sSound[128];
 				Format(sKeyString, sizeof(sKeyString), "repeat_%d", GetRandomInt(1, iMaxSounds));
-				g_hSound.GetString(sKeyString, sSound, sizeof(sSound));
-				if (IsSoundPrecached(sSound))
-					EmitSoundToAll(sSound, player.Index);
+				g_Sounds.GetString(sKeyString, sSound, sizeof(sSound));
+				EmitSoundToAll(sSound, player.Index);
 			}
 		}
 	}
@@ -331,7 +333,7 @@ Action Command_CommonCommands(int client, int args)
 
 Action Command_Menu(int client, int args)
 {
-	if (!g_ConVar[P_Enabled].BoolValue)
+	if (!g_ConVars[P_Enabled].BoolValue)
 		return Plugin_Handled;
 	
 	char sCommand[32];
@@ -353,7 +355,7 @@ Action Command_Menu(int client, int args)
 
 Action Command_AdminCommands(int client, int args)
 {
-	if (!g_ConVar[P_Enabled].BoolValue)
+	if (!g_ConVars[P_Enabled].BoolValue)
 		return Plugin_Handled;
 	
 	char sCommand[32];
@@ -419,7 +421,7 @@ Action Command_AdminCommands(int client, int args)
 
 Action Command_DebugCommands(int client, int args)
 {
-	//if (!g_ConVar[P_Enabled].BoolValue)
+	//if (!g_ConVars[P_Enabled].BoolValue)
 	//	return Plugin_Handled;
 	
 	char sCommand[16];
@@ -531,4 +533,86 @@ Action Command_DebugCommands(int client, int args)
 }
 
 
-
+Action Command_DebugEntities(int client, int args)
+{
+	if (args)
+	{
+		if (client == 0)
+		{
+			ReplyToCommand(client, "Not usable from server console");
+			return Plugin_Handled;
+		}
+		
+		if (g_Buttons == null || g_CellDoors == null)
+		{
+			ReplyToCommand(client, "Button list or door list does not exist. A round restart is needed");
+			return Plugin_Handled;
+		}
+		
+		char arg1[8];
+		GetCmdArg(1, arg1, sizeof(arg1));
+		
+		if (StrEqual(arg1, "open"))
+		{
+			CellControlHandler(client, true);
+		}
+		else if (StrEqual(arg1, "close"))
+		{
+			CellControlHandler(client, false);
+		}
+		else
+		{
+			ReplyToCommand(client, "Unrecognised argument");
+		}
+		
+		return Plugin_Handled;
+	}
+	
+	if (g_Buttons == null)
+	{
+		ReplyToCommand(client, "%s Button array doesn't exist", PREFIX_SERVER);
+	}
+	else
+	{
+		int open_count, close_count;
+		g_Buttons.GetTypeCounts(open_count, close_count);
+		
+		ReplyToCommand(client, "Number of buttons found: %d -- Open: %d -- Close: %d -- System type: %s", g_Buttons.Length, open_count, close_count, (g_Buttons.IsPair) ? "pair" : ((g_Buttons.IsToggle) ? "toggle" : "unknown"));
+		
+		for (int i; i < g_Buttons.Length; i++)
+		{
+			int entity = EntRefToEntIndex(g_Buttons.Get(i));
+			int type = g_Buttons.Get(i, 1);
+			
+			if (entity != -1)
+			{
+				char name[128];
+				GetEntityTargetname(entity, name, sizeof(name));
+				ReplyToCommand(client, "Button %d -- Entity index: %d -- Type: %s -- Name: %s", i, entity, (type == ButtonType_Open) ? "Open" : "Close", name);
+			}
+		}
+	}
+	
+	if (g_CellDoors == null)
+	{
+		ReplyToCommand(client, "%s Cell door array doesn't exist", PREFIX_SERVER);
+	}
+	else
+	{
+		ReplyToCommand(client, "Number of cell doors found: %d", g_CellDoors.Length);
+		
+		for (int i; i < g_CellDoors.Length; i++)
+		{
+			int entity = EntRefToEntIndex(g_CellDoors.Get(i));
+			
+			if (entity != -1)
+			{
+				char name[128];
+				GetEntityTargetname(entity, name, sizeof(name));
+				ReplyToCommand(client, "Cell door %d -- Entity index: %d -- Name: %s", i, entity, name);
+			}
+		}
+	}
+	
+	return Plugin_Handled;
+}

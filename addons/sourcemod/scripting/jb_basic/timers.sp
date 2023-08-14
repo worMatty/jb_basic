@@ -1,3 +1,5 @@
+#pragma semicolon 1
+
 
 /**
  * Timers
@@ -13,7 +15,7 @@ Action Timer_RemoveReticle(Handle timer, int model)
 		RemoveEdict(model);
 	}
 	
-	g_hTimers[Timer_Direction] = null;
+	g_Timers[Timer_Direction] = null;
 	return Plugin_Handled;
 }
 
@@ -45,7 +47,7 @@ Action Timer_RemoveGlow(Handle timer, int glow)
 		RemoveEdict(glow);
 	}
 	
-	g_hTimers[Timer_Glow] = null;
+	g_Timers[Timer_Glow] = null;
 	return Plugin_Handled;
 }
 
@@ -83,11 +85,13 @@ Action Timer_Cooldowns(Handle timer, int cooldown)
 			if (player.InGame && player.IsWarden && cooldown == CD_Directions)
 			{
 				char sSound[64];
-				g_hSound.GetString("direction_cooldown", sSound, sizeof(sSound));
+				g_Sounds.GetString("direction_cooldown", sSound, sizeof(sSound));
 				EmitSoundToClient(i, sSound, _, SNDCHAN_STATIC, _, SND_CHANGEPITCH|SND_CHANGEVOL, 0.2, SNDPITCH_HIGH);
 			}
 		}
 	}
+
+	return Plugin_Stop;
 }
 
 
@@ -96,6 +100,7 @@ Action Timer_Cooldowns(Handle timer, int cooldown)
 Action Timer_ShowHUD(Handle timer)
 {
 	ShowHUD();
+	return Plugin_Continue;
 }
 
 
@@ -104,6 +109,7 @@ Action Timer_ShowHUD(Handle timer)
 Action Timer_ShowNameText(Handle timer)
 {
 	ShowNameText();
+	return Plugin_Continue;
 }
 
 
@@ -118,4 +124,6 @@ Action Timer_AwardPoints(Handle timer)
 		if (player.InGame && player.IsAlive)
 			player.AddPoints(Points_Incremental);
 	}
+
+	return Plugin_Continue;
 }

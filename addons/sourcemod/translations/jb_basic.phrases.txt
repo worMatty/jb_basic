@@ -58,11 +58,6 @@
 	{
 		"en"			"JB Basic has loaded"
 	}
-	
-	"jb_plugin_unloaded"
-	{
-		"en"			"JB Basic has unloaded"
-	}
 
 	
 	/**

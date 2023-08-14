@@ -1,69 +1,33 @@
-/**
- * Library Includes
- * ----------------------------------------------------------------------------------------------------
- */
-
-#include <sourcemod>
-#include <sdktools>					// Used for GameRules stuff
-#include <sdkhooks>					// Used for working with entities
-
-#undef REQUIRE_PLUGIN
-#tryinclude <basecomm>				// Don't affect the voice status of admin-muted clients
-//#tryinclude <tf2attributes>		// Used to set player and weapon attributes
-//#tryinclude <Source-Chat-Relay>	// Discord relay
-
-#undef REQUIRE_EXTENSIONS
-#tryinclude <steamtools>			// Used to set the game description
-#tryinclude <tf2_stocks>			// TF2 wrapper functions. Also includes <tf2>, the extension natives
-
-
-
-
-/**
- * Compile Preprocessor Directives
- * ----------------------------------------------------------------------------------------------------
- */
-
 #pragma semicolon 1
 #pragma newdecls required
 
+#include <sourcemod>
+#include <sdktools>
+#include <sdkhooks>
 
+#undef REQUIRE_PLUGIN
+#tryinclude <basecomm>
 
+#undef REQUIRE_EXTENSIONS
+#tryinclude <steamtools>	// server game description
+#tryinclude <tf2_stocks>
 
-/**
- * Definitions
- * ----------------------------------------------------------------------------------------------------
- */
-
-#define DEBUG
-#define PLUGIN_AUTHOR		"worMatty"
-#define PLUGIN_VERSION		"0.1"
+#define PLUGIN_VERSION		"0.2"
 #define PLUGIN_NAME			"Jailbreak Basic"
-#define PLUGIN_DESCRIPTION	"Basic Jailbreak game mode functions"
-#define MAXPLAYERS_TF2		34		// Source TV + 1 for client index offset
-
-#define PREFIX_DEBUG		"[JB Basic] [Debug]"
 #define PREFIX_SERVER		"[JB Basic]"
-
-#define STRING_YOUR_MOD		"Source Game Server"	// Default game description when using with unsupported games/mods
+#define PREFIX_DEBUG		"[JB Basic] [Debug]"
+#define STRING_YOUR_MOD		"Source Game Server"
 #define PRE_ROUND_TIME		20
+#define MAXPLAYERS_TF2		34
 
-
-
-
-/**
- * Enumerations
- * ----------------------------------------------------------------------------------------------------
- */
-
-// Player Queue Points
-enum {
-	Points_Starting = 10,		// Queue points a player receives when connecting for the first time
-	Points_FullAward = 10,		// Queue points awarded on round end
-	Points_PartialAward = 5,	// Smaller amount of round end queue points awarded
-	Points_Incremental = 1,		// Number of points awarded to live players by a timer
-	Points_Consumed = 0,		// The points a selected player is left with
-}
+public Plugin myinfo = 
+{
+	name = PLUGIN_NAME,
+	author = "worMatty",
+	description = "Basic Jailbreak game mode functions",
+	version = PLUGIN_VERSION,
+	url = ""
+};
 
 // ConVars
 enum {
@@ -73,6 +37,7 @@ enum {
 	P_UseTimer,
 	P_RemoteRange,
 	P_RoundTime,
+	P_OfficerCap,
 	P_Debug,
 	
 	S_Unbalance,
@@ -96,47 +61,12 @@ enum {
 	Timer_Max
 }
 
-// Entities to control
-enum {
-	Ent_CellButton = 0,
-	Ent_CellDoors,
-	Ent_Reticle,
-	Ent_ArrayMax
-}
-
-// Player Data Array
-enum {
-	Player_Index = 0,
-	Player_ID,
-	Player_Points,
-	Player_Flags,
-	Player_ArrayMax
-}
-
 // Warden Ability Cooldowns
 enum {
 	CD_Directions = 0,
 	CD_CellDoors,
 	CD_Repeat,
 	CD_ArrayMax
-}
-
- enum {
-	Team_None = 0,
-	Team_Spec,
-	Team_Red,
-	Team_Blue,
-	Team_Both = 254,
-	Team_All = 255
-}
-
-// Player Property "m_lifeState" Values
-enum {
-	LifeState_Alive,		// alive
-	LifeState_Dying,		// playing death animation or still falling off of a ledge waiting to hit ground
-	LifeState_Dead,			// dead. lying still.
-	LifeState_Respawnable,
-	LifeState_DiscardBody
 }
 
 // Round State
@@ -146,28 +76,6 @@ enum {
 	Round_Active,
 	Round_Win
 }
-
-// Weapon Slots
-enum {
-	Weapon_Primary = 0,
-	Weapon_Secondary,
-	Weapon_Melee,
-	Weapon_Grenades,
-	Weapon_Building,
-	Weapon_PDA,
-	Weapon_ArrayMax
-}
-
-// Ammo Types
-enum {
-	Ammo_Dummy = 0,
-	Ammo_Primary,
-	Ammo_Secondary,
-	Ammo_Metal,
-	Ammo_Grenades1,	// Thermal Thruster fuel
-	Ammo_Grenades2
-}
-
 
 
 
@@ -215,12 +123,13 @@ enum {
  * ----------------------------------------------------------------------------------------------------
  */
 
+// Libraries present
 bool g_bSteamTools;
 bool g_bBasecomm;
 
-ConVar g_ConVar[ConVars_Max];
+ConVar g_ConVars[ConVars_Max];
 
-Handle g_hTimers[Timer_Max];
+Handle g_Timers[Timer_Max];
 Handle g_hRadialText;
 Handle g_hHUDText;
 Handle g_hNameText;
@@ -229,36 +138,37 @@ int g_iGame;
 int g_iState;
 int g_iRoundState;
 int g_iPlayers[MAXPLAYERS_TF2][Player_ArrayMax];
-int g_iEnts[Ent_ArrayMax];
 int g_iCooldowns[CD_ArrayMax];
 
-StringMap g_hSound;
+ButtonList g_Buttons;
+DoorList g_CellDoors;
+StringMap g_Sounds;
 
-StringMap SoundList()
+StringMap BuildSoundList()
 {
-	StringMap hSound = new StringMap();
-	hSound.SetString("direction_cooldown", 	"player/recharged.wav");
-	hSound.SetString("direction_goto", 		"coach/coach_go_here.wav");
-	hSound.SetString("direction_lookat", 	"coach/coach_look_here.wav");
-	hSound.SetString("direction_kill", 		"coach/coach_defend_here.wav");
-	hSound.SetString("warden_instruction",	"buttons/button17.wav");
-	hSound.SetString("chat_debug", 			"common/warning.wav");
-	hSound.SetString("chat_feedback", (FileExists("sound/ui/chat_display_text.wav", true)) ? "ui/chat_display_text.wav" : "ui/buttonclickrelease.wav");
-	hSound.SetString("repeat_1", 			"vo/k_lab/ba_guh.wav");
-	hSound.SetString("repeat_2", 			"vo/k_lab/ba_whoops.wav");
-	hSound.SetString("repeat_3", 			"vo/k_lab/ba_whatthehell.wav");
-	hSound.SetString("repeat_4", 			"vo/npc/male01/whoops01.wav");
-	hSound.SetString("repeat_5", 			"vo/npc/male01/pardonme02.wav");
-	hSound.SetString("repeat_6", 			"vo/npc/male01/sorry01.wav");
-	hSound.SetString("repeat_7", 			"vo/npc/male01/sorry03.wav");
-	hSound.SetString("repeat_8", 			"vo/k_lab/kl_ohdear.wav");
-	hSound.SetString("repeat_9", 			"vo/npc/male01/pardonme01.wav");
-	hSound.SetString("repeat_10", 			"vo/npc/male01/excuseme01.wav");
-	hSound.SetString("repeat_11", 			"vo/npc/male01/excuseme02.wav");
-	hSound.SetString("repeat_12", 			"vo/k_lab/kl_interference.wav");
-	hSound.SetString("repeat_13", 			"vo/k_lab2/kl_cantleavelamarr.wav"); 	
+	StringMap sounds = new StringMap();
+	sounds.SetString("direction_cooldown", 	"player/recharged.wav");
+	sounds.SetString("direction_goto", 		"coach/coach_go_here.wav");
+	sounds.SetString("direction_lookat", 	"coach/coach_look_here.wav");
+	sounds.SetString("direction_kill", 		"coach/coach_defend_here.wav");
+	sounds.SetString("warden_instruction",	"buttons/button17.wav");
+	sounds.SetString("chat_debug", 			"common/warning.wav");
+	sounds.SetString("chat_feedback", (FileExists("sound/ui/chat_display_text.wav", true)) ? "ui/chat_display_text.wav" : "ui/buttonclickrelease.wav");
+	sounds.SetString("repeat_1", 			"vo/k_lab/ba_guh.wav");
+	sounds.SetString("repeat_2", 			"vo/k_lab/ba_whoops.wav");
+	sounds.SetString("repeat_3", 			"vo/k_lab/ba_whatthehell.wav");
+	sounds.SetString("repeat_4", 			"vo/npc/male01/whoops01.wav");
+	sounds.SetString("repeat_5", 			"vo/npc/male01/pardonme02.wav");
+	sounds.SetString("repeat_6", 			"vo/npc/male01/sorry01.wav");
+	sounds.SetString("repeat_7", 			"vo/npc/male01/sorry03.wav");
+	sounds.SetString("repeat_8", 			"vo/k_lab/kl_ohdear.wav");
+	sounds.SetString("repeat_9", 			"vo/npc/male01/pardonme01.wav");
+	sounds.SetString("repeat_10", 			"vo/npc/male01/excuseme01.wav");
+	sounds.SetString("repeat_11", 			"vo/npc/male01/excuseme02.wav");
+	sounds.SetString("repeat_12", 			"vo/k_lab/kl_interference.wav");
+	sounds.SetString("repeat_13", 			"vo/k_lab2/kl_cantleavelamarr.wav"); 	
 	
-	return hSound;
+	return sounds;
 }
 
 
@@ -269,30 +179,15 @@ StringMap SoundList()
  * ----------------------------------------------------------------------------------------------------
  */
 
-#include "jb_basic/methodmaps"
-#include "jb_basic/stocks"
-#include "jb_basic/events"
-#include "jb_basic/commands"
-#include "jb_basic/menus"
-#include "jb_basic/timers"
-
-
-
-
-/**
- * Plugin Info
- * ----------------------------------------------------------------------------------------------------
- */
-
-public Plugin myinfo = 
-{
-	name = PLUGIN_NAME,
-	author = PLUGIN_AUTHOR,
-	description = PLUGIN_DESCRIPTION,
-	version = PLUGIN_VERSION,
-	url = ""
-};
-
+#include "jb_basic/methodmaps.sp"
+#include "jb_basic/commands.sp"
+#include "jb_basic/hud.sp"
+#include "jb_basic/events.sp"
+#include "jb_basic/menus.sp"
+#include "jb_basic/stocks.sp"
+#include "jb_basic/teams.sp"
+#include "jb_basic/timers.sp"
+#include "jb_basic/world_control.sp"
 
 
 
@@ -326,39 +221,32 @@ public void OnPluginStart()
 	PrintToChatAll("%t %t", "prefix_important", "jb_plugin_loaded");
 	
 	// ConVars
-	g_ConVar[P_Version]			= CreateConVar("jb_version", PLUGIN_VERSION);
-	g_ConVar[P_Enabled]			= CreateConVar("jb_enabled", "0", "Enabled Jailbreak");
-	g_ConVar[P_AutoEnable]		= CreateConVar("jb_auto_enable", "1", "Allow the plugin to enable and disable itself based on a map's prefix");
-	g_ConVar[P_UseTimer] 		= CreateConVar("jb_round_timer", "0", "Create and use a round timer if one is not built into the map");
-	g_ConVar[P_RoundTime] 		= CreateConVar("jb_round_time", "600", "Round time, if enabled");
-	g_ConVar[P_RemoteRange] 	= CreateConVar("jb_remote_range", "2600", "Range of the Warden's remote cell door ability when not in LOS");
-	g_ConVar[P_Debug]			= CreateConVar("jb_debug", "1", "Enable plugin debugging messages showing in server and client consoles");
+	g_ConVars[P_Version]			= CreateConVar("jb_version", PLUGIN_VERSION);
+	g_ConVars[P_Enabled]			= CreateConVar("jb_enabled", "0", "Enabled Jailbreak");
+	g_ConVars[P_AutoEnable]		= CreateConVar("jb_auto_enable", "1", "Allow the plugin to enable and disable itself based on a map's prefix");
+	g_ConVars[P_UseTimer] 		= CreateConVar("jb_round_timer", "0", "Create and use a round timer if one is not built into the map");
+	g_ConVars[P_RoundTime] 		= CreateConVar("jb_round_time", "600", "Round time, if enabled");
+	g_ConVars[P_OfficerCap] 		= CreateConVar("jb_officer_cap", "35.72", "Percentage of total active players that are allowed to be an officer. This sets the maximum officer count", _, true, 0.0, true, 100.0);
+	g_ConVars[P_RemoteRange] 	= CreateConVar("jb_remote_range", "2600", "Range of the Warden's remote cell door ability when not in LOS");
+	g_ConVars[P_Debug]			= CreateConVar("jb_debug", "1", "Enable plugin debugging messages showing in server and client consoles");
 	
-	g_ConVar[S_Unbalance]		= FindConVar("mp_teams_unbalance_limit");
-	g_ConVar[S_AutoBalance]		= FindConVar("mp_autoteambalance");
-	g_ConVar[S_Scramble]		= FindConVar("mp_scrambleteams_auto");
-	g_ConVar[S_Queue]			= FindConVar("tf_arena_use_queue");
-	g_ConVar[S_FreezeTime] 		= FindConVar("tf_arena_preround_time");
+	g_ConVars[S_Unbalance]		= FindConVar("mp_teams_unbalance_limit");
+	g_ConVars[S_AutoBalance]		= FindConVar("mp_autoteambalance");
+	g_ConVars[S_Scramble]		= FindConVar("mp_scrambleteams_auto");
+	g_ConVars[S_Queue]			= FindConVar("tf_arena_use_queue");
+	g_ConVars[S_FreezeTime] 		= FindConVar("tf_arena_preround_time");
 	
-	if (!(g_iGame & FLAG_OF))			g_ConVar[S_FirstBlood]	= FindConVar("tf_arena_first_blood");
-	if (g_iGame & FLAG_OF)				g_ConVar[S_Pushaway] 	= FindConVar("of_teamplay_collision");
-	if (g_iGame & (FLAG_TF|FLAG_TF2C))	g_ConVar[S_Pushaway] 	= FindConVar("tf_avoidteammates_pushaway");
+	if (!(g_iGame & FLAG_OF))			g_ConVars[S_FirstBlood]	= FindConVar("tf_arena_first_blood");
+	if (g_iGame & FLAG_OF)				g_ConVars[S_Pushaway] 	= FindConVar("of_teamplay_collision");
+	if (g_iGame & (FLAG_TF|FLAG_TF2C))	g_ConVars[S_Pushaway] 	= FindConVar("tf_avoidteammates_pushaway");
 	
 	// Increase the amount of pre-round freeze time possible
-	SetConVarBounds(g_ConVar[S_FreezeTime], ConVarBound_Upper, true, PRE_ROUND_TIME.0);
+	SetConVarBounds(g_ConVars[S_FreezeTime], ConVarBound_Upper, true, PRE_ROUND_TIME.0);
 	
-	// Cycle through and hook each ConVar
+	// Hook ConVars
 	for (int i = 0; i < ConVars_Max; i++)
 	{
-		if (g_ConVar[i] != null)
-		{
-			g_ConVar[i].AddChangeHook(ConVar_ChangeHook);
-			char sName[64];
-			g_ConVar[i].GetName(sName, sizeof(sName));
-			Debug("Hooked convar %s", sName);
-		}
-		else
-			LogError("Unable to hook ConVar number %d", i);
+		g_ConVars[i].AddChangeHook(ConVar_ChangeHook);
 	}
 	
 	// Commands
@@ -374,6 +262,7 @@ public void OnPluginStart()
 	
 	// Debug Commands
 	RegAdminCmd("sm_jbdata", Command_DebugCommands, ADMFLAG_SLAY, "Print the values of the player data array to your console");
+	RegAdminCmd("sm_jbents", Command_DebugEntities, ADMFLAG_SLAY, "Print found Jailbreak entities in the map to console");
 	RegAdminCmd("sm_stripslot", Command_DebugCommands, ADMFLAG_SLAY, "Strip one of your weapons of its ammo");
 	RegAdminCmd("sm_redist", Command_DebugCommands, ADMFLAG_SLAY, "Redistribute players");
 	RegAdminCmd("sm_jbtextdemo", Command_DebugCommands, ADMFLAG_SLAY, "Print example text strings to your chat box");
@@ -381,13 +270,12 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_clipvals", Command_DebugCommands, "Print your weapon clip values to console");
 	
 	// Build Sound List
-	g_hSound = SoundList();
+	g_Sounds = BuildSoundList();
 	
 	// Late Loading
 	if (g_iState & FLAG_LOADED_LATE)
 	{
 		// Initialise Player Data Array
-		LogMessage("Plugin loaded late. Initialising the player data array");
 		for (int i = 1; i <= MaxClients; i++)
 		{
 			Player player = new Player(i);
@@ -434,22 +322,6 @@ public void OnMapStart()
 {
 	// Reset the round state to WFP
 	g_iRoundState = Round_Waiting;
-	
-/*	// Add assets to the download table and precache them
-	PrepareAssets();
-	
-	// Auto Enable
-	if (g_ConVar[P_AutoEnable].BoolValue)
-	{
-		char sMapName[32];
-		GetCurrentMap(sMapName, sizeof(sMapName));
-		
-		if (StrContains(sMapName, "jb_", false) != -1 || StrContains(sMapName, "ba_", false) != -1)
-		{
-			LogMessage("Detected a Jailbreak map. Enabling game mode functions");
-			g_ConVar[P_Enabled].SetBool(true);
-		}
-	}*/
 }
 
 
@@ -460,8 +332,10 @@ public void OnMapStart()
  */
 public int Steam_FullyLoaded()
 {
-	if (g_ConVar[P_Enabled].BoolValue)
+	if (g_ConVars[P_Enabled].BoolValue)
+	{
 		GameDescription(true);
+	}
 }
 
 
@@ -469,33 +343,26 @@ public int Steam_FullyLoaded()
 /**
  * OnConfigsExecuted
  *
+ * Detect Jailbreak maps and enable the plugin
  * Execute config_jailbreak.cfg when all other configs have loaded.
  */
 public void OnConfigsExecuted()
 {
-	// Add assets to the download table and precache them
-	//PrepareAssets();
-	
-	// Auto Enable
-	if (g_ConVar[P_AutoEnable].BoolValue)
+	if (g_ConVars[P_AutoEnable].BoolValue)
 	{
 		char sMapName[32];
 		GetCurrentMap(sMapName, sizeof(sMapName));
-		
-		if (StrContains(sMapName, "jb_", false) != -1 || StrContains(sMapName, "ba_", false) != -1 ||
-			StrContains(sMapName, "jail_", false) != -1 || StrContains(sMapName, "jail_", false) != -1)
-		// TODO Ask Berke if 'jail_' was the right prefix
+
+		if (StrContains(sMapName, "jb_", false) != -1 || StrContains(sMapName, "ba_", false) != -1 || StrContains(sMapName, "jail_", false) != -1 || StrContains(sMapName, "jail_", false) != -1)
 		{
-			LogMessage("Detected a Jailbreak map. Enabling game mode functions");
-			g_ConVar[P_Enabled].SetBool(true);
+			g_ConVars[P_Enabled].SetBool(true);
 		}
 	}
 	
-	// Set required ConVar values in case the server reversed them
-	//SetConVars();
-	
-	if (g_ConVar[P_Enabled].BoolValue)
+	if (g_ConVars[P_Enabled].BoolValue)
+	{
 		ServerCommand("exec config_jailbreak.cfg");
+	}
 }
 
 
@@ -503,26 +370,30 @@ public void OnConfigsExecuted()
 /**
  * OnMapEnd
  *
+ * Disable the plugin if it's enabled
  * NOT called when the plugin is unloaded.
  */
 public void OnMapEnd()
 {
-	if (g_ConVar[P_Enabled].BoolValue)
+	if (g_ConVars[P_Enabled].BoolValue)
 	{
-		g_ConVar[P_Enabled].SetBool(false);
-		LogMessage("The map has come to an end. Restoring server ConVars to defaults and unhooking things");
+		g_ConVars[P_Enabled].SetBool(false);
 	}
 }
 
 
 
+/**
+ * OnPluginEnd
+ *
+ * Disable the plugin if it's enabled
+ * Called when the plugin is unloaded.
+ */
 public void OnPluginEnd()
 {
-	if (g_ConVar[P_Enabled].BoolValue)
+	if (g_ConVars[P_Enabled].BoolValue)
 	{
-		g_ConVar[P_Enabled].SetBool(false);
-		PrintToChatAll("%t %t", "prefix_important", "jb_plugin_unloaded");
-		LogMessage("Plugin has been unloaded. Restoring server ConVars to defaults and unhooking things");
+		g_ConVars[P_Enabled].SetBool(false);
 	}
 }
 
@@ -538,7 +409,7 @@ public void OnClientAuthorized(int client, const char[] auth)
 
 public void OnEntityCreated(int entity, const char[] classname)
 {
-	if (!g_ConVar[P_Enabled].BoolValue)
+	if (!g_ConVars[P_Enabled].BoolValue)
 		return;
 	
 	if (StrEqual(classname, "tf_ammo_pack"))
@@ -571,7 +442,7 @@ stock void RequestFrame_RoundTimer(int entity)
 		{
 			char sSetup[3], sTime[5];
 			IntToString(PRE_ROUND_TIME, sSetup, sizeof(sSetup));
-			g_ConVar[P_RoundTime].GetString(sTime, sizeof(sTime));
+			g_ConVars[P_RoundTime].GetString(sTime, sizeof(sTime));
 			
 			DispatchKeyValue(iEnt, "setup_length", sSetup);
 			DispatchKeyValue(iEnt, "timer_length", sTime);
@@ -583,7 +454,7 @@ stock void RequestFrame_RoundTimer(int entity)
 			AcceptEntityInput(iEnt, "ShowInHUD");
 			AcceptEntityInput(iEnt, "Resume");
 			
-			if (g_ConVar[P_UseTimer].BoolValue)
+			if (g_ConVars[P_UseTimer].BoolValue)
 			{
 				SetVariantString("OnFinished JB_RED_WIN,RoundWin,,0.0,1");
 				AcceptEntityInput(iEnt, "AddOutput");
@@ -614,7 +485,7 @@ stock void RequestFrame_RoundTimer(int entity)
 
 public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float vel[3], const float angles[3], int weapon, int subtype, int cmdnum, int tickcount, int seed, const int mouse[2])
 {
-	if (!g_ConVar[P_Enabled].BoolValue || g_iRoundState != Round_Active)
+	if (!g_ConVars[P_Enabled].BoolValue || g_iRoundState != Round_Active)
 		return;
 	
 	static int iMouseMovement[MAXPLAYERS_TF2][3];
@@ -644,7 +515,7 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 			Format(sTop, sizeof(sTop), "  %t  ", "jb_radial_warden_menu");
 			
 			char sLeft[64];
-			if (g_iEnts[Ent_CellButton])
+			if (!g_Buttons.Empty)
 				Format(sLeft, sizeof(sLeft), "  %64t  ", "jb_radial_cells_button");
 			
 			char sRight[64];
@@ -662,7 +533,7 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 			else if (iMouseMovement[client][0] < -100)
 			{
 				TrimString(sLeft);
-				if (g_iEnts[Ent_CellButton]) Format(sLeft, sizeof(sLeft), "❱ %s ❰", sLeft);
+				if (!g_Buttons.Empty) Format(sLeft, sizeof(sLeft), "❱ %s ❰", sLeft);
 				iMouseMovement[client][2] = 2;
 			}
 			else if (iMouseMovement[client][0] > 90)
@@ -702,7 +573,7 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 			switch (iMouseMovement[client][2])
 			{
 				case 1: MenuFunction(client, "menu_warden");
-				case 2: if (g_iEnts[Ent_CellButton]) ToggleCells(client);
+				case 2: if (!g_Buttons.Empty) CellControlHandler(client);
 				//case 3: DebugEx(client, "Right item chosen");
 				case 4: ClientCommand(client, "voicemenu 0 2");
 			}
@@ -718,4 +589,256 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 public void BaseComm_OnClientMute(int client, bool muteState)
 {
 	ShowHUD(client);
+}
+
+
+
+
+/**
+ * ConVar Change Hook
+ * ----------------------------------------------------------------------------------------------------
+ */
+
+
+/**
+ * Print to server console when values are changed and trigger some functions
+ * depending on the convar being changed.
+ * 
+ * @param	ConVar	ConVar handle.
+ * @param	char	Old ConVar value.
+ * @param	char	New ConVar value.
+ * @noreturn
+ */
+stock void ConVar_ChangeHook(ConVar convar, const char[] oldValue, const char[] newValue)
+{
+	char sName[64];
+	convar.GetName(sName, sizeof(sName));
+	
+	if (StrContains(sName, "jb_") != -1)
+	{
+		ShowActivity(0, "%s changed from %s to %s", sName, oldValue, newValue);
+	}
+	
+	// Enable/Disable
+	if (StrEqual(sName, "jb_enabled", false))
+	{
+		bool bEnabled = g_ConVars[P_Enabled].BoolValue;
+		GameDescription(bEnabled);
+		HookStuff(bEnabled);
+		
+		// Remove player roles
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			Player player = new Player(i);
+			player.Flags &= ~MASK_RESET_ROLES;
+		}
+		
+		if (bEnabled)
+		{
+			// Begin HUD Timers
+			g_Timers[Timer_HUD] = CreateTimer(10.0, Timer_ShowHUD, _, TIMER_REPEAT);
+			g_Timers[Timer_NameText] = CreateTimer(0.25, Timer_ShowNameText, _, TIMER_REPEAT);
+			TriggerTimer(g_Timers[Timer_HUD]);
+			
+			// Prepare assets for download
+			PrepareAssets();
+		}
+		else
+		{
+			// Decommission all timers
+			for (int i = 0; i < Timer_Max; i++)
+			{
+				if (g_Timers[i] != null)
+				{
+					//KillTimer(g_hTimers[i]);
+					//g_hTimers[i] = null;
+					delete g_Timers[i];
+				}
+			}
+		}
+	}
+}
+
+
+
+/**
+ * Enable Plugin
+ * ----------------------------------------------------------------------------------------------------
+ */
+
+/**
+ * Set server ConVars and un/hook events.
+ * 
+ * @param	bool	Plugin 'enabled'?
+ * @noreturn
+ */
+stock void HookStuff(bool enabled)
+{
+	// ConVars
+	if (enabled)
+	{
+		g_ConVars[S_Unbalance].IntValue = 0;
+		g_ConVars[S_AutoBalance].IntValue = 0;
+		g_ConVars[S_Scramble].IntValue = 0;
+		g_ConVars[S_Queue].IntValue = 0;
+		g_ConVars[S_FreezeTime].IntValue = PRE_ROUND_TIME;
+		//g_ConVars[S_Pushaway]
+		if (!(g_iGame & FLAG_OF)) g_ConVars[S_FirstBlood].IntValue = 0;
+	}
+	else
+	{
+		g_ConVars[S_Unbalance].RestoreDefault();
+		g_ConVars[S_AutoBalance].RestoreDefault();
+		g_ConVars[S_Scramble].RestoreDefault();
+		g_ConVars[S_Queue].RestoreDefault();
+		g_ConVars[S_FreezeTime].RestoreDefault();
+		//g_ConVars[S_Pushaway].RestoreDefault();
+		if (!(g_iGame & FLAG_OF)) g_ConVars[S_FirstBlood].RestoreDefault();
+	}
+	
+	// Events
+	if (enabled)
+	{
+		HookEvent("teamplay_round_start", Event_RoundRestart, EventHookMode_PostNoCopy); // Round restart
+		HookEvent("teamplay_round_active", Event_RoundActive, EventHookMode_PostNoCopy); // Round has begun
+		HookEvent("arena_round_start", Event_RoundActive, EventHookMode_PostNoCopy); // Round has begun (Arena)
+		HookEvent("player_changeclass", Event_ChangeClass); // Player changes class
+		HookEvent("player_spawn", Event_PlayerSpawn); // Player spawns
+		HookEvent("player_death", Event_PlayerDeath); // Player dies
+		
+	}
+	else
+	{
+		UnhookEvent("teamplay_round_start", Event_RoundRestart, EventHookMode_PostNoCopy);
+		UnhookEvent("teamplay_round_active", Event_RoundActive, EventHookMode_PostNoCopy);
+		UnhookEvent("arena_round_start", Event_RoundActive, EventHookMode_PostNoCopy);
+		UnhookEvent("player_changeclass", Event_ChangeClass);
+		UnhookEvent("player_spawn", Event_PlayerSpawn);
+		UnhookEvent("player_death", Event_PlayerDeath);
+	}
+	
+	// Commands
+	if (enabled)
+	{
+		AddCommandListener(Command_Listener, "autoteam");
+		AddCommandListener(Command_Listener, "jointeam");
+		AddCommandListener(Command_Listener, "build");
+		AddCommandListener(Command_Listener, "voicemenu");
+		AddCommandListener(Command_Listener, "kill");
+		AddCommandListener(Command_Listener, "explode");
+	}
+	else
+	{
+		RemoveCommandListener(Command_Listener, "autoteam");
+		RemoveCommandListener(Command_Listener, "jointeam");
+		RemoveCommandListener(Command_Listener, "build");
+		RemoveCommandListener(Command_Listener, "voicemenu");
+		RemoveCommandListener(Command_Listener, "kill");
+		RemoveCommandListener(Command_Listener, "explode");
+	}
+	
+	// Arrays
+	if (!enabled)
+	{
+		delete g_CellDoors;
+		delete g_Buttons;
+	}
+}
+
+
+
+/**
+ * Server Environment (game description & download table)
+ * ----------------------------------------------------------------------------------------------------
+ */
+
+/**
+ * Set the server's game description.
+ *
+ * @noreturn
+ */
+void GameDescription(bool enabled)
+{
+	if (!g_bSteamTools)
+		return;
+	
+	char sGameDesc[32];
+	
+	if (!enabled) // Plugin not enabled
+	{
+		if (g_iGame & FLAG_TF)Format(sGameDesc, sizeof(sGameDesc), "Team Fortress");
+		else if (g_iGame & FLAG_OF)Format(sGameDesc, sizeof(sGameDesc), "Open Fortress");
+		else if (g_iGame & FLAG_TF2C)Format(sGameDesc, sizeof(sGameDesc), "Team Fortress 2 Classic");
+		else Format(sGameDesc, sizeof(sGameDesc), STRING_YOUR_MOD);
+	}
+	else
+		Format(sGameDesc, sizeof(sGameDesc), "%s | %s", PLUGIN_NAME, PLUGIN_VERSION);
+	
+	Steam_SetGameDescription(sGameDesc);
+	PrintToServer("%s Set game description to \"%s\"", PREFIX_SERVER, sGameDesc);
+}
+
+
+
+// Add the Reticle Model to the Download Table
+void PrepareAssets()
+{
+	// Read Reticle Model File
+	Handle hFile = OpenFile("models/jb_basic_reticle.txt", "rt", true);
+	
+	if (hFile == null)
+	{
+		LogError("Unable to find jb_basic_reticle.txt");
+		delete hFile;
+		return;
+	}
+	
+	char sLine[256];
+	
+	while (!IsEndOfFile(hFile))
+	{
+		ReadFileLine(hFile, sLine, sizeof(sLine));
+		CleanString(sLine);
+		
+		if (!FileExists(sLine, true))
+		{
+			LogError("File listed in jb_basic_reticle.txt does not exist: %s", sLine);
+			continue;
+		}
+		
+		Debug("Adding to the download table: %s", sLine);
+		AddFileToDownloadsTable(sLine);
+		
+		if (StrContains(sLine, ".mdl", false) != -1)
+		{
+			if (PrecacheModel(sLine, true))
+				Debug("Successfully precached %s", sLine);
+			else
+				LogError("Failed to precache %s", sLine);
+		}
+	}
+	
+	// Precache Sounds
+	StringMapSnapshot hSnapshot = g_Sounds.Snapshot();
+	int iLength = hSnapshot.Length;
+	char sKeyString[32];
+	char sSound[64];
+	
+	Debug("%d sounds found in the string map", iLength);
+	
+	for (int i = 0; i < iLength; i++)
+	{
+		hSnapshot.GetKey(i, sKeyString, sizeof(sKeyString));
+		g_Sounds.GetString(sKeyString, sSound, sizeof(sSound));
+		
+
+		if (PrecacheSound(sSound, true))
+			Debug("Successfully precached %s", sSound);
+		else
+			LogError("Failed to precache %s", sSound);
+	}
+
+	// Delete Handles
+	delete hSnapshot;
+	delete hFile;
 }

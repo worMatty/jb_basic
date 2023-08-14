@@ -1,3 +1,5 @@
+#pragma semicolon 1
+
 
 /**
 * Menu Function
@@ -16,7 +18,7 @@ stock void MenuFunction(int client, const char[] sMenu)
 	{
 		menu.SetTitle("%s %s\n ", PLUGIN_NAME, PLUGIN_VERSION);
 
-		if (g_iRoundState == Round_Freeze && !(g_iState & FLAG_HAVE_WARDEN) && player.Team == Team_Blue)
+		if (g_iRoundState == Round_Freeze && !(g_iState & FLAG_HAVE_WARDEN) && player.Team == Team_Officers)
 			menu.AddItem("item_become_warden", "jb_menu_item_become_warden");
 
 		if (player.Flags & FLAG_WARDEN)
@@ -38,11 +40,19 @@ stock void MenuFunction(int client, const char[] sMenu)
 		menu.SetTitle("%t\n ", "jb_menu_warden_title");
 		menu.ExitBackButton = true;
 		
-		if (g_iEnts[Ent_CellButton])
+		if (!g_Buttons.Empty)
 		{
-			menu.AddItem("warden_cells_button", "jb_menu_warden_press_cell_button", (g_iRoundState == Round_Active) ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
+			if (g_Buttons.IsPair)
+			{
+				menu.AddItem("warden_cells_open", "jb_menu_warden_open_cells", (g_iRoundState == Round_Active) ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
+				menu.AddItem("warden_cells_close", "jb_menu_warden_close_cells", (g_iRoundState == Round_Active) ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
+			}
+			else if (g_Buttons.IsToggle)
+			{
+				menu.AddItem("warden_cells_button", "jb_menu_warden_press_cell_button", (g_iRoundState == Round_Active) ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
+			}
 		}
-		else if (g_iEnts[Ent_CellDoors])
+		else if (!g_CellDoors.Empty)
 		{
 			menu.AddItem("warden_cells_open", "jb_menu_warden_open_cells", (g_iRoundState == Round_Active) ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
 			menu.AddItem("warden_cells_close", "jb_menu_warden_close_cells", (g_iRoundState == Round_Active) ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
@@ -97,7 +107,7 @@ stock void MenuFunction(int client, const char[] sMenu)
 		for (int i = 1; i <= MaxClients; i++)
 		{
 			Player iPlayer = new Player(i);
-			if (iPlayer.InGame && iPlayer.Team == Team_Red && iPlayer.IsAlive)
+			if (iPlayer.InGame && iPlayer.Team == Team_Inmates && iPlayer.IsAlive)
 			{
 				char sItem[17], sName[32], sDisplay[32];
 				Format(sItem, sizeof(sItem), "mute_prisoner_%d", i);
@@ -201,9 +211,13 @@ public int Menu_Handler(Menu menu, MenuAction action, int param1, int param2)
 			if (StrContains(sSelection, "warden_cells_") == 0)
 			{
 				if (StrEqual(sSelection, "warden_cells_open") || StrEqual(sSelection, "warden_cells_button"))
-					ToggleCells(player.Index);
+				{
+					CellControlHandler(player.Index, true);
+				}
 				else
-					ToggleCells(player.Index, false);
+				{
+					CellControlHandler(player.Index, false);
+				}
 			}
 			else if (StrEqual(sSelection, "warden_direct"))
 			{
@@ -225,7 +239,7 @@ public int Menu_Handler(Menu menu, MenuAction action, int param1, int param2)
 				for (int i = 1; i <= MaxClients; i++)
 				{
 					Player iPlayer = new Player(i);
-					if (iPlayer.InGame && iPlayer.Team == Team_Red && iPlayer.IsAlive)
+					if (iPlayer.InGame && iPlayer.Team == Team_Inmates && iPlayer.IsAlive)
 						iPlayer.Mute(mute);
 				}
 				

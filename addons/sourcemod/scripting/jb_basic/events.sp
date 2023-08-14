@@ -1,3 +1,6 @@
+#pragma semicolon 1
+
+
 /**
  * Events
  * ----------------------------------------------------------------------------------------------------
@@ -5,51 +8,13 @@
 
 stock void Event_RoundRestart(Event event, const char[] name, bool dontBroadcast)
 {
-	PrintToServer("%s Round Reset", PREFIX_SERVER);
-	
-	// Reset entity indexes
-	for (int i = 0; i < Ent_ArrayMax; i++)
-		g_iEnts[i] = 0;
+	PrintToServer("%s Round Restart", PREFIX_SERVER);
 	
 	// Find map entities
-	int iEnt = -1;
-	
-	// Find Cell Button
-	// Alternative names: *model, opencells, button_cells, cb
-	while ((iEnt = FindEntityByClassname(iEnt, "func_button")) != -1)
-	{
-		char sTargetname[11];
-		GetEntPropString(iEnt, Prop_Data, "m_iName", sTargetname, sizeof(sTargetname));
-		if (StrEqual(sTargetname, "open_cells", false) || StrEqual(sTargetname, "opencells", false) ||
-			StrEqual(sTargetname, "button_cells", false) || StrEqual(sTargetname, "cb", false))
-		{
-			g_iEnts[Ent_CellButton] = iEnt;
-			Debug("Found \"open_cells\" button at entity index %d", iEnt);
-			break;
-		}
-	}
-	if (!g_iEnts[Ent_CellButton])
-		LogError("Couldn't find cell door button");
-	
-	// Find Cell Doors
-	// Alternative names: cd, opencells, cells, Jaildoor, cell_door_1, prisondoor, jailcells
-	while ((iEnt = FindEntityByClassname(iEnt, "func_door")) != -1)
-	{
-		char sTargetname[10];
-		GetEntPropString(iEnt, Prop_Data, "m_iName", sTargetname, sizeof(sTargetname));
-		if (StrEqual(sTargetname, "cell_door", false) || StrEqual(sTargetname, "opencells", false) ||
-			StrEqual(sTargetname, "cells", false) || StrEqual(sTargetname, "jaildoor", false) ||
-			StrEqual(sTargetname, "cell_door_1", false) || StrEqual(sTargetname, "prisondoor", false) ||
-			StrEqual(sTargetname, "jailcells", false) || StrEqual(sTargetname, "cd", false))
-		{
-			g_iEnts[Ent_CellDoors] = iEnt;
-			Debug("Found \"cell_door\" at entity index %d", iEnt);
-			iEnt = -1;
-			break;
-		}
-	}
-	if (!g_iEnts[Ent_CellDoors])
-		LogError("Couldn't find cell door");
+	delete g_Buttons;
+	delete g_CellDoors;
+	g_Buttons = FindCellButtons();
+	g_CellDoors = FindCellDoors();
 	
 	// Reset player and game state flags and cooldowns
 	for (int i = 1; i <= MaxClients; i++)
@@ -74,55 +39,61 @@ stock void Event_RoundRestart(Event event, const char[] name, bool dontBroadcast
 
 stock void RequestFrame_RoundReset()
 {
-	// Spawn Round Timer
-	int iEnt = CreateEntityByName("team_round_timer");
-	if (iEnt != -1)
+	// Create a team_round_timer used for the setup time and optionally the round time
+	int timer = CreateEntityByName("team_round_timer");
+
+	if (timer != -1)
 	{
-		char sSetup[3], sTime[5];
-		IntToString(PRE_ROUND_TIME, sSetup, sizeof(sSetup));
-		g_ConVar[P_RoundTime].GetString(sTime, sizeof(sTime));
+		char setup_length[3], timer_length[5];
+
+		IntToString(PRE_ROUND_TIME, setup_length, sizeof(setup_length));
+		g_ConVars[P_RoundTime].GetString(timer_length, sizeof(timer_length));
 		
-		DispatchKeyValue(iEnt, "setup_length", sSetup);
-		DispatchKeyValue(iEnt, "timer_length", sTime);
-		DispatchKeyValue(iEnt, "targetname", "JB_ROUND_TIMER");
-		if (DispatchSpawn(iEnt))
-			Debug("Created a team_round_timer %d with targetname JB_ROUND_TIMER", iEnt);
-		
+		DispatchKeyValue(timer, "setup_length", setup_length);
+		DispatchKeyValue(timer, "timer_length", timer_length);
+		DispatchKeyValue(timer, "targetname", "JB_ROUND_TIMER");
+		DispatchSpawn(timer);
+
 		SetVariantString("1");
-		AcceptEntityInput(iEnt, "ShowInHUD");
-		AcceptEntityInput(iEnt, "Resume");
+		AcceptEntityInput(timer, "ShowInHUD");
+		AcceptEntityInput(timer, "Resume");
 		
-		if (g_ConVar[P_UseTimer].BoolValue)
+		// If we're using the plugin's round timer, set it to call a red win on end
+		if (g_ConVars[P_UseTimer].BoolValue)
 		{
 			SetVariantString("OnFinished JB_RED_WIN,RoundWin,,0.0,1");
-			AcceptEntityInput(iEnt, "AddOutput");
+			AcceptEntityInput(timer, "AddOutput");
 			
-			iEnt = CreateEntityByName("game_round_win");
-			if (iEnt != -1)
+			int round_win = CreateEntityByName("game_round_win");
+			if (round_win != -1)
 			{
-				DispatchKeyValue(iEnt, "targetname", "JB_RED_WIN");
-				DispatchKeyValue(iEnt, "force_map_reset", "1");
-				DispatchKeyValue(iEnt, "switch_teams", "0");
-				//DispatchKeyValue(iEnt, "TeamNum", "2");
-				DispatchSpawn(iEnt);
+				DispatchKeyValue(round_win, "targetname", "JB_RED_WIN");
+				DispatchKeyValue(round_win, "force_map_reset", "1");
+				DispatchKeyValue(round_win, "switch_teams", "0");
+				//DispatchKeyValue(round_win, "TeamNum", "2");
+				DispatchSpawn(round_win);
 				
 				SetVariantString("2");
-				AcceptEntityInput(iEnt, "SetTeam");
+				AcceptEntityInput(round_win, "SetTeam");
 
-				Debug("Team value of game_round_win is %d", GetEntProp(iEnt, Prop_Data, "m_iTeamNum"));
+				Debug("Team value of game_round_win is %d", GetEntProp(round_win, Prop_Data, "m_iTeamNum"));
 			}
 		}
 		else
 		{
 			SetVariantString("OnSetupFinished !self,Kill,,0.0,1");
-			AcceptEntityInput(iEnt, "AddOutput");
+			AcceptEntityInput(timer, "AddOutput");
 		}
 	}
 }
 
 
 
-
+/**
+ * Event: Round Active
+ *
+ * Will not fire if either team has no players
+ */
 stock void Event_RoundActive(Event event, const char[] name, bool dontBroadcast)
 {
 	PrintToServer("%s Round Active", PREFIX_SERVER);
@@ -150,15 +121,15 @@ stock void Event_RoundActive(Event event, const char[] name, bool dontBroadcast)
 		Player player = new Player(i);
 		if (player.InGame)
 		{
-			if (player.Team == Team_Red)
+			if (player.Team == Team_Inmates)
 				player.MakePrisoner();
-			else if (player.Team == Team_Blue && !player.IsWarden)
+			else if (player.Team == Team_Officers && !player.IsWarden)
 				player.MakeOfficer();
 		}
 	}
 	
 	// Start queue points award timer
-	g_hTimers[Timer_QueuePoints] = CreateTimer(30.0, Timer_AwardPoints, _, TIMER_REPEAT);
+	g_Timers[Timer_QueuePoints] = CreateTimer(30.0, Timer_AwardPoints, _, TIMER_REPEAT);
 }
 
 
@@ -169,7 +140,7 @@ stock void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 	g_iRoundState = Round_Win;
 	
 	// Kill Queue Points Timer
-	KillTimer(g_hTimers[Timer_QueuePoints]);
+	KillTimer(g_Timers[Timer_QueuePoints]);
 	
 	// Unmute everyone
 	for (int i = 1; i <= MaxClients; i++)

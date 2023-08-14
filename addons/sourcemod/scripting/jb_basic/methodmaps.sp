@@ -1,173 +1,188 @@
-/**
- * Methodmaps
- * ----------------------------------------------------------------------------------------------------
- */
-
+#pragma semicolon 1
 
 
 /**
  * Player
  * ----------------------------------------------------------------------------------------------------
  */
+
+enum {
+	Player_Index = 0,
+	Player_ID,
+	Player_Points,
+	Player_Flags,
+	Player_ArrayMax
+}
+
+enum {
+	Team_None = 0,
+	Team_Spec,
+	Team_Inmates,
+	Team_Officers,
+	Team_Both = 254,
+	Team_All = 255
+}
+
+// Weapon Slots
+enum {
+	Weapon_Primary = 0,
+	Weapon_Secondary,
+	Weapon_Melee,
+	Weapon_Grenades,
+	Weapon_Building,
+	Weapon_PDA,
+	Weapon_ArrayMax
+}
+
+// Ammo Types
+enum {
+	Ammo_Dummy = 0,
+	Ammo_Primary,
+	Ammo_Secondary,
+	Ammo_Metal,
+	Ammo_Grenades1,	// Thermal Thruster fuel
+	Ammo_Grenades2
+}
+
+enum {
+	LifeState_Alive,
+	LifeState_Dying,
+	LifeState_Dead,
+	LifeState_Respawnable,
+	LifeState_DiscardBody
+}
+
+enum {
+	Points_Starting = 10,		// Queue points a player receives when connecting for the first time
+	Points_FullAward = 10,		// Queue points awarded on round end
+	Points_PartialAward = 5,	// Smaller amount of round end queue points awarded
+	Points_Incremental = 1,		// Number of points awarded to live players by a timer
+	Points_Consumed = 0,		// The points a selected player is left with
+}
+
 methodmap Player < Handle
 {
-	public Player(int player)
-	{
+	public Player(int player) {
 		return view_as<Player>(player);
 	}
 	
-	
-	/**
-	 * Properties
-	 * --------------------------------------------------
-	 * --------------------------------------------------
-	 */
-	
-	// Client Index
-	property int Index
-	{
-		public get()
-		{
+	property int Index {
+		public get() {
 			return view_as<int>(this);
 		}
 	}
 	
-	// User ID
-	property int UserID
-	{
-		public get()
-		{
-			if (IsClientConnected(this.Index))
+	property int UserID {
+		public get() {
+			if (IsClientConnected(this.Index))	// necessary?
+			{
 				return GetClientUserId(this.Index);
-			else
-				return 0;
+			}
+
+			return 0;
 		}
 	}
 	
-	// Steam Account ID
-	property int SteamID
-	{
-		public get()
-		{
-			if (IsClientConnected(this.Index))
+	property int SteamID {
+		public get() {
+			if (IsClientConnected(this.Index))	// necessary?
+			{
 				return GetSteamAccountID(this.Index);
-			else
-				return 0;
+			}
+
+			return 0;
 		}
 	}
 	
-	// Team Number
-	property int Team
-	{
-		public get()
-		{
+	property int Team {
+		public get() {
 			return GetClientTeam(this.Index);
 		}
 	}
 	
-	// Class Number
-	property int Class
-	{
-		public get()
-		{
-			GetEntProp(this.Index, Prop_Send, "m_iClass");
+	property int Class {
+		public get() {
+			GetEntProp(this.Index, Prop_Send, "m_iClass");	// TF2 class number
 		}
 	}
 	
-	// Is Connected
-	property bool IsConnected
-	{
-		public get()
-		{
+	property bool IsConnected {
+		public get() {
 			return IsClientConnected(this.Index);
 		}
 	}
 	
-	// In Game
-	property bool InGame
-	{
-		public get()
-		{
+	property bool InGame {
+		public get() {
 			return IsClientInGame(this.Index);
 		}
 	}
 	
-	// Is Valid
-	property bool IsValid
-	{
-		public get()
-		{
+	property bool IsValid {
+		public get() {
 			return (this.Index > 0 && this.Index <= MaxClients);
 		}
 	}
 	
-	// Is Observer
-	property bool IsObserver
-	{
-		public get()
-		{
+	property bool IsObserver {
+		public get() {
 			return IsClientObserver(this.Index);
 		}
 	}
 	
-	// Alive
-	property bool IsAlive
-	{
-		public get()
-		{
-			if (IsClientInGame(this.Index))
+	property bool IsAlive {
+		public get() {
+			if (IsClientInGame(this.Index))	// necessary?
+			{
 				return IsPlayerAlive(this.Index);
-				//return (!IsClientObserver(this.Index));
-			else
-				return false;
+			}
+
+			return false;
 		}
 	}
 	
-	// Is Participating
-	property bool IsParticipating
-	{
-		public get()
-		{
+	property bool IsParticipating {
+		public get() {
 			if (IsClientInGame(this.Index))
-				return (GetClientTeam(this.Index) == Team_Red || GetClientTeam(this.Index) == Team_Blue);
-			else
-				return false;
+			{
+				return (GetClientTeam(this.Index) == Team_Inmates || GetClientTeam(this.Index) == Team_Officers);
+			}
+
+			return false;
 		}
 	}
 	
-	// Is Admin
-	property bool IsAdmin
-	{
-		public get()
-		{
-			//return (GetAdminFlags(GetUserAdmin(this.Index), Access_Effective));
+	property bool IsAdmin {
+		public get() {
 			return (GetUserAdmin(this.Index) != INVALID_ADMIN_ID);
 		}
 	}
 	
-	// Is Muted
-	property int IsMuted
-	{
-		public get()
-		{
+	property int IsMuted {
+		public get() {
 			if (g_bBasecomm && BaseComm_IsClientMuted(this.Index))
+			{
 				return 2;
+			}
 			else if (GetClientListeningFlags(this.Index) == VOICE_MUTED)
+			{
 				return 1;
+			}
 			else
+			{
 				return 0;
+			}
 		}
 	}
 	
-	// Health
-	property int Health
-	{
-		public get()
-		{
+	property int Health {
+		public get() {
 			if (IsClientInGame(this.Index))
+			{
 				return GetClientHealth(this.Index);
-			else
-				return 0;
+			}
+
+			return 0;
 		}
 	}
 	
@@ -175,64 +190,80 @@ methodmap Player < Handle
 	/**
 	 * Functions
 	 * --------------------------------------------------
-	 * --------------------------------------------------
 	 */
 	
-	// Set Health
 	public void SetHealth(int health)
 	{
 		SetEntProp(this.Index, Prop_Send, "m_iHealth", health, 4);
 	}
 	
-	// Set Team & Optionally Respawn
-	public void SetTeam(int team, bool respawn=true)
+	public void SetTeam(int team, bool respawn = true)
 	{
 		if (!(g_iGame & FLAG_TF))	// TODO Get alternative for TF2 Tools respawn native
+		{
 			respawn = false;
+		}
 		
-		if (respawn) SetEntProp(this.Index, Prop_Send, "m_lifeState", LifeState_Dead);
+		if (respawn)
+		{
+			SetEntProp(this.Index, Prop_Send, "m_lifeState", LifeState_Dead);
+		}
+
 		ChangeClientTeam(this.Index, team);
-		if (respawn) SetEntProp(this.Index, Prop_Send, "m_lifeState", LifeState_Alive);
-		if (respawn) TF2_RespawnPlayer(this.Index);
 		
+		if (respawn)
+		{
+			SetEntProp(this.Index, Prop_Send, "m_lifeState", LifeState_Alive);
+		}
+		
+		if (respawn)
+		{
+			TF2_RespawnPlayer(this.Index);
+		}
+
 		Debug("Moved %N to team %d %s", this.Index, team, (respawn) ? "and respawned them" : "");
 	}
 	
-	// Set Class
-	public bool SetClass(int class, bool regenerate=true, bool persistent=false)
+	public bool SetClass(int class, bool regenerate = true, bool persistent = false)
 	{
 		TF2_SetPlayerClass(this.Index, view_as<TFClassType>(class), _, persistent);
 		
 		// Don't regenerate a dead player because they'll go to Limbo
 		if (regenerate && IsPlayerAlive(this.Index) && (GetFeatureStatus(FeatureType_Native, "TF2_RegeneratePlayer") == FeatureStatus_Available))
+		{
 			TF2_RegeneratePlayer(this.Index);
+		}
 	}
-	
 
 	// Get Weapon Index
 	// BUG Use with RequestFrame after spawning or it might return -1
 	public int GetWeapon(int slot = Weapon_Primary)
 	{
 		if (IsClientInGame(this.Index))
+		{
 			return GetPlayerWeaponSlot(this.Index, slot);
-		else
-			return -1;
+		}
+
+		return -1;
 	}
 	
-	// Switch to Slot
 	public void SetSlot(int slot = Weapon_Primary)
 	{
 		int iWeapon;
 		
 		if (IsClientInGame(this.Index))
+		{
 			if ((iWeapon = GetPlayerWeaponSlot(this.Index, slot)) == -1)
 			{
 				LogError("Tried to get %N's weapon in slot %d but got -1. Can't switch to that slot", this.Index, slot);
 				return;
 			}
+		}
 		
 		if (GetFeatureStatus(FeatureType_Native, "TF2_RemoveCondition") == FeatureStatus_Available)
+		{
 			TF2_RemoveCondition(this.Index, TFCond_Taunting);
+		}
 		
 		char sClassname[64];
 		GetEntityClassname(iWeapon, sClassname, sizeof(sClassname));
@@ -241,7 +272,6 @@ methodmap Player < Handle
 	}
 	
 	// Switch to Melee & Optionally Restrict
-	// TODO Find out OF melee slot
 	public void MeleeOnly(bool enable=true, bool remove_others=false)
 	{
 		bool bConds = (GetFeatureStatus(FeatureType_Native, "TF2_AddCondition") == FeatureStatus_Available);
@@ -283,21 +313,21 @@ methodmap Player < Handle
 		}
 	}
 	
-	// Strip Ammo
 	public void StripAmmo(int slot)
 	{
 		int iWeapon = this.GetWeapon(slot);
+
 		if (iWeapon != -1)
 		{
 			if (GetEntProp(iWeapon, Prop_Data, "m_iClip1") != -1)	// Formerly -1
 			{
-				DebugEx(this.Index, "Slot %d weapon had %d ammo", slot, GetEntProp(iWeapon, Prop_Data, "m_iClip1"));
+				//DebugEx(this.Index, "Slot %d weapon had %d ammo", slot, GetEntProp(iWeapon, Prop_Data, "m_iClip1"));
 				SetEntProp(iWeapon, Prop_Send, "m_iClip1", 0);
 			}
 			
 			if (GetEntProp(iWeapon, Prop_Data, "m_iClip2") != -1)	// Formerly -1
 			{
-				DebugEx(this.Index, "Slot %d weapon had %d ammo", slot, GetEntProp(iWeapon, Prop_Data, "m_iClip2"));
+				//DebugEx(this.Index, "Slot %d weapon had %d ammo", slot, GetEntProp(iWeapon, Prop_Data, "m_iClip2"));
 				SetEntProp(iWeapon, Prop_Send, "m_iClip2", 0);
 			}
 			
@@ -323,80 +353,51 @@ methodmap Player < Handle
 	/**
 	 * Plugin Properties
 	 * --------------------------------------------------
-	 * --------------------------------------------------
 	 */
 	
 	// Queue Points
-	property int Points
-	{
-		public get()
-		{
+	property int Points {
+		public get() {
 			return g_iPlayers[this.Index][Player_Points];
 		}
-		public set(int points)
-		{
+		public set(int points) {
 			g_iPlayers[this.Index][Player_Points] = points;
 		}
 	}
 	
-	// Plugin Flags
-	property int Flags
-	{
-		public get()
-		{
+	property int Flags {
+		public get() {
 			return g_iPlayers[this.Index][Player_Flags];
 		}
-		public set(int flags)
-		{
+		public set(int flags) {
 			g_iPlayers[this.Index][Player_Flags] = flags;
 		}
 	}
 	
-	// Is Warden
-	property bool IsWarden
-	{
-		public get()
-		{
-			if (g_iPlayers[this.Index][Player_Flags] & FLAG_WARDEN)
-				return true;
-			else
-				return false;
+	property bool IsWarden {
+		public get() {
+			return !!(g_iPlayers[this.Index][Player_Flags] & FLAG_WARDEN);
 		}
 	}
 	
-	// Is Warden
-	property bool IsOfficer
-	{
-		public get()
-		{
-			if (g_iPlayers[this.Index][Player_Flags] & FLAG_OFFICER)
-				return true;
-			else
-				return false;
+	property bool IsOfficer {
+		public get() {
+			return !!(g_iPlayers[this.Index][Player_Flags] & FLAG_OFFICER);
 		}
 	}
 	
-	// Is Prisoner
-	property bool IsPrisoner
-	{
-		public get()
-		{
-			if (g_iPlayers[this.Index][Player_Flags] & FLAG_PRISONER)
-				return true;
-			else
-				return false;
+	property bool IsPrisoner {
+		public get() {
+			return !!(g_iPlayers[this.Index][Player_Flags] & FLAG_PRISONER);
 		}
 	}
 	
 	// User ID from Player Array
-	property int ArrayUserID
-	{
-		public get()
-		{
+	property int ArrayUserID {
+		public get() {
 			return g_iPlayers[this.Index][Player_ID];
 		}
-		public set(int userid)
-		{
+		public set(int userid) {
 			g_iPlayers[this.Index][Player_ID] = userid;
 		}
 	}
@@ -413,26 +414,13 @@ methodmap Player < Handle
 	/**
 	 * Plugin Functions
 	 * --------------------------------------------------
-	 * --------------------------------------------------
 	 */
 	
-	/**
-	 * Set a player's queue points value in the data array.
-	 * 
-	 * @noreturn
-	 */
-	/*public void SetPoints(int points)
-	{
-		g_iPlayers[this.Index][Player_Points] = points;
-	}*/
-	
-	// Add Queue Points
 	public void AddPoints(int points)
 	{
 		g_iPlayers[this.Index][Player_Points] += points;
 	}
 	
-	// Set Queue Points
 	public void SetPoints(int points)
 	{
 		g_iPlayers[this.Index][Player_Points] = points;
@@ -441,51 +429,45 @@ methodmap Player < Handle
 	// Check Player On Connection
 	public void CheckArray()
 	{
-		// If the player's User ID is not in our array
-		if (GetClientUserId(this.Index) != g_iPlayers[this.Index][Player_ID])
+		if (GetClientUserId(this.Index) != g_iPlayers[this.Index][Player_ID])	// not found in array
 		{
-			this.NewPlayer();
+			this.NewPlayer();	// set them up
 		}
 		
-		// If the player wants SourceMod translations in English, set their language
-		if (g_iPlayers[this.Index][Player_Flags] & FLAG_ENGLISH)
+		if (g_iPlayers[this.Index][Player_Flags] & FLAG_ENGLISH)	// wants English SM translations
 		{
 			SetClientLanguage(this.Index, 0);
 		}
 	}
 	
-	// Player Has Flag
 	public bool HasFlag(int flag)
 	{
-		//bool bHasFlag = (g_iPlayers[this.Index][Player_Flags] & flag);
-		//return bHasFlag;
-		return !!(g_iPlayers[this.Index][Player_Flags] & flag);
-		// I don't understand it but it worked. https://forums.alliedmods.net/showthread.php?t=319928
+		return !!(g_iPlayers[this.Index][Player_Flags] & flag);	// https://forums.alliedmods.net/showthread.php?t=319928
 	}
 	
-	// Player Set Flag
 	public void AddFlag(int flag)
 	{
 		g_iPlayers[this.Index][Player_Flags] |= flag;
 	}
 	
-	// Player Remove Flag
 	public void RemoveFlag(int flag)
 	{
 		g_iPlayers[this.Index][Player_Flags] &= ~flag;
 	}
 	
-	// Make the Player a Warden
-	public void MakeWarden(bool grant=true)
+	public void MakeWarden(bool grant = true)
 	{
 		if (grant)
 		{
 			this.Flags |= FLAG_WARDEN;
 			g_iState |= FLAG_HAVE_WARDEN;
-			
+
+			// Scale up model by 20%			
 			SetVariantString("1.2");
 			if (AcceptEntityInput(this.Index, "SetModelScale"))
+			{
 				this.Flags |= FLAG_WARDEN_LARGE;
+			}
 			
 			ShowAnnotation(this.Index, "jb_annotation_player_is_a_warden", this.Index, _, _, true);
 			
@@ -493,20 +475,7 @@ methodmap Player < Handle
 			GetClientName(this.Index, sName, sizeof(sName));
 			PrintToChatAllEx(this.Index, "%t %t", "prefix", "jb_name_became_warden", sName);
 			ChatResponse(this.Index, true, "%t", "jb_you_are_a_warden");
-			
 			ShowHUD(this.Index);
-			
-			/*
-			for (int i = 1; i <= MaxClients; i++)
-			{
-				char sName[32];
-				GetClientName(this.Index, sName, sizeof(sName));
-				
-				Player player = new Player(i);
-				if (player.InGame && this.Index != player.Index)
-					PrintToChat(player.Index, "%t %t", "prefix", "jb_name_became_warden", sName);
-			}
-			*/
 		}
 		else
 		{
@@ -518,8 +487,7 @@ methodmap Player < Handle
 		}
 	}
 	
-	// Make the Player an Officer
-	public void MakeOfficer(bool grant=true)
+	public void MakeOfficer(bool grant = true)
 	{
 		if (grant)
 		{
@@ -532,8 +500,7 @@ methodmap Player < Handle
 		}
 	}
 	
-	// Make the Player a Prisoner
-	public void MakePrisoner(bool grant=true)
+	public void MakePrisoner(bool grant = true)
 	{
 		if (grant)
 		{
@@ -542,6 +509,7 @@ methodmap Player < Handle
 				this.Flags |= FLAG_PRISONER;
 				PrintToChat(this.Index, "%t %t", "prefix_reply", "jb_you_are_a_prisoner");
 			}
+
 			this.StripAmmo(Weapon_Primary);
 			this.StripAmmo(Weapon_Secondary);
 		}
@@ -549,14 +517,16 @@ methodmap Player < Handle
 		{
 			this.Flags &= ~FLAG_PRISONER;
 		}
+
 		SetEntProp(this.Index, Prop_Send, "m_bIsMiniBoss", grant, 1);	// TODO Does this get reset on death?
 	}
 	
-	// Mute
 	public bool Mute(bool mute = true)
 	{
 		if (g_bBasecomm && BaseComm_IsClientMuted(this.Index))
+		{
 			return false;
+		}
 		
 		if (mute)
 		{
@@ -570,5 +540,242 @@ methodmap Player < Handle
 		}
 		
 		return true;
+	}
+}
+
+
+
+
+methodmap EntityList < ArrayList
+{
+	public EntityList(int blocksize = 1)
+	{
+		return view_as<EntityList>(new ArrayList(blocksize));
+	}
+	
+	property bool Empty {
+		public get() {
+			this.Validate();
+			return !this.Length;
+		}
+	}
+	
+	public void Validate() 
+	{
+		for (int i; i < this.Length;)
+		{
+			if (IsValidEntity(this.Get(i)))
+			{
+				i++;
+			}
+			else
+			{
+				this.Erase(i);
+			}
+		}
+	}
+	
+	public bool AnyInRange(int client)
+	{
+		bool in_range;
+		
+		for (int i; i < this.Length; i++)
+		{
+			int entity = this.Get(i);
+			
+			if (IsValidEntity(entity))
+			{
+				if (EntInRange(client, entity, g_ConVars[P_RemoteRange].FloatValue, true))
+				{
+					in_range = true;
+					break;
+				}
+			}
+		}
+		
+		return in_range;
+	}
+}
+
+
+
+methodmap DoorList < EntityList
+{
+	public DoorList()
+	{
+		return view_as<DoorList>(new EntityList());
+	}
+
+	public int OpenAll()
+	{
+		int opened;
+		
+		for (int i; i < this.Length; i++)
+		{
+			int door = this.Get(i);
+			
+			if (IsValidEntity(door))
+			{
+				if (AcceptEntityInput(door, "Open"))
+				{
+					opened += 1;
+				}
+			}
+		}
+		
+		return opened;
+	}
+	
+	public int CloseAll()
+	{
+		int closed;
+		
+		for (int i; i < this.Length; i++)
+		{
+			int door = this.Get(i);
+			
+			if (IsValidEntity(door))
+			{
+				if (AcceptEntityInput(door, "Close"))
+				{
+					closed += 1;
+				}
+			}
+		}
+		
+		return closed;
+	}
+}
+
+
+enum {
+	ButtonType_Open,
+	ButtonType_Close,
+}
+
+methodmap ButtonList < EntityList
+{
+	public ButtonList()
+	{
+		return view_as<ButtonList>(new EntityList(2));
+	}
+	
+	public void GetTypeCounts(int &open_count, int &close_count)
+	{
+		this.Validate();
+		
+		int open, close;
+		
+		for (int i; i < this.Length; i++)
+		{
+			int type = this.Get(i, 1);
+			
+			if (type == ButtonType_Open)
+			{
+				open++;
+			}
+			
+			if (type == ButtonType_Close)
+			{
+				close++;
+			}
+		}
+		
+		open_count = open;
+		close_count = close;
+	}
+	
+	property bool IsToggle
+	{
+		public get()
+		{
+			int open_count, close_count;
+			this.GetTypeCounts(open_count, close_count);
+			
+			if (close_count == 0 && open_count > 0)
+			{
+				return true;
+			}
+			
+			return false;
+		}
+	}
+	
+	property bool IsPair
+	{
+		public get()
+		{
+			int open_count, close_count;
+			this.GetTypeCounts(open_count, close_count);
+			
+			if (close_count > 0 && open_count > 0)
+			{
+				return true;
+			}
+			
+			return false;
+		}
+	}
+	
+	public int Press()
+	{
+		int pressed;
+		
+		for (int i; i < this.Length; i++)
+		{
+			int button = this.Get(i);
+			
+			if (IsValidEntity(button))
+			{
+				if (AcceptEntityInput(button, "Press"))
+				{
+					pressed += 1;
+				}
+			}
+		}
+		
+		return pressed;
+	}
+	
+	public int PressOpen()
+	{
+		int pressed;
+		
+		for (int i; i < this.Length; i++)
+		{
+			int button = this.Get(i);
+			int buttontype = this.Get(i, 1);
+			
+			if (IsValidEntity(button) && buttontype == ButtonType_Open)
+			{
+				if (AcceptEntityInput(button, "Press"))
+				{
+					pressed += 1;
+				}
+			}
+		}
+		
+		return pressed;
+	}
+	
+	public int PressClose()
+	{
+		int pressed;
+		
+		for (int i; i < this.Length; i++)
+		{
+			int button = this.Get(i);
+			int buttontype = this.Get(i, 1);
+			
+			if (IsValidEntity(button) && buttontype == ButtonType_Close)
+			{
+				if (AcceptEntityInput(button, "Press"))
+				{
+					pressed += 1;
+				}
+			}
+		}
+		
+		return pressed;
 	}
 }
